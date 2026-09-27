@@ -89,7 +89,10 @@ public final class RedstoneCameraPlugin extends JavaPlugin implements Listener {
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true)
     public void retract(BlockPistonRetractEvent event) { if(event.getBlocks().stream().anyMatch(this::isCamera)) event.setCancelled(true); }
     private boolean isCamera(Block block) { return cameras.values().stream().anyMatch(c->c.block().equals(block)); }
-    @EventHandler public void redstone(BlockRedstoneEvent event) {
+    // Direct redstone-block placement/removal need not emit BlockRedstoneEvent.
+    @EventHandler public void physics(BlockPhysicsEvent event) { scheduleSample(); }
+    @EventHandler public void redstone(BlockRedstoneEvent event) { scheduleSample(); }
+    private void scheduleSample() {
         if(sampleScheduled||cameras.isEmpty()) return;
         sampleScheduled=true;
         // Redstone events report pre-physics state. Sample after that update, once per tick.

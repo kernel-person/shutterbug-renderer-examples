@@ -27,7 +27,7 @@ public final class PaintersEaselPlugin extends JavaPlugin implements Listener {
     private final Map<UUID,Easel> easels=new HashMap<>();
     private static final class Easel {
         final ItemFrame frame; final UUID owner; final Block base;
-        PigmentCanvas canvas; byte[] palette; boolean capturing,dirty; long lastStroke;
+        PigmentCanvas canvas; byte[] palette; boolean capturing,dirty,blocked; long lastStroke;
         Easel(ItemFrame frame,UUID owner,Block base) {this.frame=frame;this.owner=owner;this.base=base;}
     }
     @Override public void onEnable() {
@@ -49,6 +49,7 @@ public final class PaintersEaselPlugin extends JavaPlugin implements Listener {
                     entity->easels.containsKey(entity.getUniqueId()));
             Easel easel=hit==null?null:easels.get(hit.getHitEntity().getUniqueId());
             if(easel==null||!easel.owner.equals(player.getUniqueId())) {player.sendMessage("Look at your own easel within five blocks.");return true;}
+            if(easel.blocked) {player.sendMessage("This easel is protected but unavailable. Ask an administrator to restore its canvas backup, or unload excess easels and reload the chunk.");return true;}
             if(easel.canvas!=null||easel.capturing) {player.sendMessage("Collect your painting first (sneak + right-click with the brush).");return true;}
             remove(easel);player.sendMessage("Easel removed.");return true;
         }
@@ -78,19 +79,32 @@ public final class PaintersEaselPlugin extends JavaPlugin implements Listener {
                 ||!board.getRelative(front).getType().isAir()||easels.size()>=128) {
             event.setCancelled(true);event.getPlayer().sendMessage("Need clear space above and in front of the easel (128 loaded easels maximum).");return;
         }
+        var placedData=base.getBlockData();
+        // Wait for every listener on the original placement, including later HIGHEST listeners.
+        getServer().getScheduler().runTask(this,()->{
+            if(event.isCancelled()||!event.canBuild()
+                    ||!base.getWorld().isChunkLoaded(base.getX()>>4,base.getZ()>>4)
+                    ||base.getType()!=Material.OAK_FENCE||!Objects.equals(base.getBlockData(),placedData)) return;
+            if(!board.getType().isAir()||!board.getRelative(front).getType().isAir()||easels.size()>=128) {
+                rollbackBase(event);return;
+            }
+            commitPlacement(event,base,board,front);
+        });
+    }
+    private void commitPlacement(BlockPlaceEvent event,Block base,Block board,BlockFace front) {
         BlockState original=board.getState();
         board.setType(Material.OAK_PLANKS,false);
         var protection=new BlockMultiPlaceEvent(List.of(event.getBlockReplacedState(),original),
                 event.getBlockAgainst(),event.getItemInHand(),event.getPlayer(),event.canBuild());
         getServer().getPluginManager().callEvent(protection);
-        if(protection.isCancelled()||!protection.canBuild()) {original.update(true,false);event.setCancelled(true);return;}
+        if(protection.isCancelled()||!protection.canBuild()) {original.update(true,false);rollbackBase(event);return;}
         ItemFrame frame=null;
         try {
             frame=base.getWorld().spawn(board.getRelative(front).getLocation().add(.5,.5,.5),ItemFrame.class);
             frame.setFacingDirection(front,true);frame.setItemDropChance(0);
             var hanging=new HangingPlaceEvent(frame,event.getPlayer(),board,front,event.getHand(),event.getItemInHand());
             getServer().getPluginManager().callEvent(hanging);
-            if(hanging.isCancelled()) {frame.remove();original.update(true,false);event.setCancelled(true);return;}
+            if(hanging.isCancelled()) {frame.remove();original.update(true,false);rollbackBase(event);return;}
             frame.getPersistentDataContainer().set(ownerTag,PersistentDataType.STRING,event.getPlayer().getUniqueId().toString());
             frame.getPersistentDataContainer().set(baseTag,PersistentDataType.INTEGER_ARRAY,new int[]{base.getX(),base.getY(),base.getZ()});
             Easel easel=new Easel(frame,event.getPlayer().getUniqueId(),base);
@@ -98,20 +112,39 @@ public final class PaintersEaselPlugin extends JavaPlugin implements Listener {
             frame.setItem(maps.create(base.getWorld(),blank(),"Blank Canvas"),false);
         } catch(RuntimeException|IOException failure) {
             if(frame!=null) {easels.remove(frame.getUniqueId());frame.remove();}
-            original.update(true,false);event.setCancelled(true);event.getPlayer().sendMessage("Could not place the easel.");
+            original.update(true,false);rollbackBase(event);event.getPlayer().sendMessage("Could not place the easel.");
         }
+    }
+    private void rollbackBase(BlockPlaceEvent event) {
+        // Original event already finished. Restore the placed fence and refund one item ourselves.
+        if(event.getBlockPlaced().getType()!=Material.OAK_FENCE) return;
+        event.getBlockReplacedState().update(true,false);
+        Player player=event.getPlayer();
+        if(player.getGameMode()==GameMode.CREATIVE) return;
+        ItemStack refund=event.getItemInHand().clone();refund.setAmount(1);
+        for(ItemStack leftover:player.getInventory().addItem(refund).values())
+            event.getBlockPlaced().getWorld().dropItemNaturally(event.getBlockPlaced().getLocation(),leftover);
     }
     private void load(Chunk chunk) {
         for(Entity entity:chunk.getEntities()) if(entity instanceof ItemFrame frame) {
             String owner=frame.getPersistentDataContainer().get(ownerTag,PersistentDataType.STRING);
             int[] base=frame.getPersistentDataContainer().get(baseTag,PersistentDataType.INTEGER_ARRAY);
-            if(owner==null||base==null||base.length!=3||easels.size()>=128) continue;
+            if(owner==null||base==null||base.length!=3||easels.containsKey(frame.getUniqueId())) continue;
+            Easel easel;
             try {
-                Easel easel=new Easel(frame,UUID.fromString(owner),frame.getWorld().getBlockAt(base[0],base[1],base[2]));
+                easel=new Easel(frame,UUID.fromString(owner),frame.getWorld().getBlockAt(base[0],base[1],base[2]));
+            } catch(IllegalArgumentException invalidOwner) {continue;}
+            // Ownership survives bad files and the active-work cap. Never expose a saved map to theft.
+            easel.blocked=easels.size()>=128;
+            easels.put(frame.getUniqueId(),easel);
+            if(easel.blocked) continue;
+            try {
                 easel.canvas=store.load(frame.getUniqueId());
                 if(easel.canvas!=null) {easel.palette=palette(easel.canvas);maps.update(maps.id(frame.getItem()),easel.palette);}
-                easels.put(frame.getUniqueId(),easel);
-            } catch(IOException|RuntimeException failure) {getLogger().warning("Could not load an easel; preserved its saved data.");}
+            } catch(IOException|RuntimeException failure) {
+                easel.blocked=true;easel.canvas=null;easel.palette=null;
+                getLogger().warning("Could not load canvas "+frame.getUniqueId()+"; easel stays protected. Restore its backup and reload the chunk.");
+            }
         }
     }
     @EventHandler public void loaded(ChunkLoadEvent event) {load(event.getChunk());}
@@ -127,6 +160,7 @@ public final class PaintersEaselPlugin extends JavaPlugin implements Listener {
         Easel easel=easels.get(event.getRightClicked().getUniqueId());
         if(easel==null) return;event.setCancelled(true);
         Player player=event.getPlayer();
+        if(easel.blocked) {player.sendMessage("This easel is unavailable but protected. Ask an administrator to restore its canvas backup or unload excess easels and reload the chunk.");return;}
         if(event.getHand()!=EquipmentSlot.HAND||!easel.owner.equals(player.getUniqueId())
                 ||!tagged(player.getInventory().getItemInMainHand(),"brush")) return;
         if(player.isSneaking()) collect(easel,player);
@@ -166,7 +200,7 @@ public final class PaintersEaselPlugin extends JavaPlugin implements Listener {
         if(event instanceof HangingBreakByEntityEvent hit&&hit.getRemover() instanceof Player player) paint(easel,player);
     }
     private void paint(Easel easel,Player player) {
-        if(!easel.owner.equals(player.getUniqueId())||easel.canvas==null
+        if(easel.blocked||!easel.owner.equals(player.getUniqueId())||easel.canvas==null
                 ||!tagged(player.getInventory().getItemInMainHand(),"brush")) return;
         int pigment=switch(player.getInventory().getItemInOffHand().getType()) {
             case CYAN_DYE -> 0;case MAGENTA_DYE -> 1;case YELLOW_DYE -> 2;default -> -1;

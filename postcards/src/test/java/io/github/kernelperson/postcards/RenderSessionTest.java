@@ -73,6 +73,23 @@ class RenderSessionTest {
         verify(client).close();
         assertEquals(0, deliveries.get());
     }
+    @Test void closeAfterSubmissionRejectsAlreadyQueuedCompletion() {
+        assertTrue(start(() -> true));
+        captured.complete(mock(Scene.class)); drain();
+        rendered.complete(mock(RenderResult.class));
+        session.close(); drain();
+        verify(task).cancel();verify(client).close();
+        assertEquals(0,deliveries.get());
+    }
+    @Test void serviceRemovalRejectsQueuedCompletionAndClosesClient() {
+        assertTrue(start(() -> true));
+        captured.complete(mock(Scene.class)); drain();
+        rendered.complete(mock(RenderResult.class));
+        var provider=new RegisteredServiceProvider<>(RendererService.class,service,ServicePriority.Normal,plugin);
+        session.providerRemoved(new org.bukkit.event.server.ServiceUnregisterEvent(provider));
+        drain();verify(task).cancel();verify(client).close();
+        assertEquals(0,deliveries.get());assertEquals(1,failures.size());
+    }
     @Test void invalidDestinationPreventsDeliveryAndCancelsWork() {
         var valid = new AtomicBoolean(true);
         assertTrue(start(valid::get));

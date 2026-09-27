@@ -54,6 +54,8 @@ Only the creator paints, collects or removes an easel. Other players may view it
 
 Permission `rendererexamples.easel` defaults to operators. Limit: 128 loaded easels. The custom model is intentionally absent: the vanilla dummy can be replaced independently of the capture/painting logic.
 
+If a saved canvas is damaged, or more than 128 easels are loaded from existing chunks, affected easels stay protected but inactive. For a damaged canvas, stop the server, restore `canvases/<frame UUID>.cmy` from a backup and restart; the console identifies that UUID. For excess easels, unload other easel chunks, then reload the affected chunk. The plugin never silently discards a damaged painting or permits another player to take it.
+
 Read [PigmentCanvas.java](painters-easel/src/main/java/io/github/kernelperson/easel/PigmentCanvas.java), [CanvasHit.java](painters-easel/src/main/java/io/github/kernelperson/easel/CanvasHit.java) and [PaintersEaselPlugin.java](painters-easel/src/main/java/io/github/kernelperson/easel/PaintersEaselPlugin.java).
 
 ## Build and adapt
@@ -92,3 +94,5 @@ Distribute your add-on, not the commercial Renderer provider, native binaries or
 ## Acceptance status
 
 Unit tests and builds are reproducible with `mvn clean verify`. Runtime acceptance and remaining manual visual checks are recorded in [docs/acceptance.md](docs/acceptance.md); do not mistake automated geometry/event checks for an actual human painting playtest.
+
+Release packaging: after committing reviewed source, run `python3 tools/package_examples.py --output target/ShutterBug-Renderer-Examples-1.0.0.zip`. It validates the three JAR inventories and records source/artifact hashes. The test-only acceptance probe is never included.

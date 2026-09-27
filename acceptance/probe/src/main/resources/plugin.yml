@@ -1,0 +1,5 @@
+name: RendererExamplesProbe
+version: 1.0.0
+main: io.github.kernelperson.probe.ExamplesProbe
+api-version: '1.21'
+depend: [ShutterBugRenderer, RendererPostcards, RendererRedstoneCamera, RendererPaintersEasel]
