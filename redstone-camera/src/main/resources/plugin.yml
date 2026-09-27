@@ -1,0 +1,13 @@
+name: RendererRedstoneCamera
+version: 1.0.0
+main: io.github.kernelperson.camera.RedstoneCameraPlugin
+api-version: '1.21'
+depend: [ShutterBugRenderer]
+description: Public Renderer API example - pulse a dispenser camera to print a map.
+commands:
+  rendercamera:
+    description: Obtain a placeable redstone camera.
+    permission: rendererexamples.camera
+permissions:
+  rendererexamples.camera:
+    default: op

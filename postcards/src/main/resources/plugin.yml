@@ -1,0 +1,13 @@
+name: RendererPostcards
+version: 1.0.0
+main: io.github.kernelperson.postcards.PostcardsPlugin
+api-version: '1.21'
+depend: [ShutterBugRenderer]
+description: Minimal public Renderer API example - turn your view into a map.
+commands:
+  postcard:
+    description: Capture your current view as a postcard map.
+    permission: rendererexamples.postcards
+permissions:
+  rendererexamples.postcards:
+    default: true

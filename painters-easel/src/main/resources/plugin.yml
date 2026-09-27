@@ -1,0 +1,13 @@
+name: RendererPaintersEasel
+version: 1.0.0
+main: io.github.kernelperson.easel.PaintersEaselPlugin
+api-version: '1.21'
+depend: [ShutterBugRenderer]
+description: Public Renderer API example - paint a captured view with three pigments.
+commands:
+  easel:
+    description: Obtain an easel and brush, or remove your empty easel.
+    permission: rendererexamples.easel
+permissions:
+  rendererexamples.easel:
+    default: op
