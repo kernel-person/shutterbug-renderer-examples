@@ -58,7 +58,7 @@ Permission `rendererexamples.easel` defaults to operators. Limit: 128 loaded eas
 
 Optional native easel and brush models (no Nexo or other plugin dependency):
 
-1. Host the **unmodified** `village-trades-easel-resourcepack.zip` from `resourcepacks/` (also at the examples ZIP root) at an HTTPS URL reachable by players, not a localhost URL. Configure your server to offer that resource pack. Its SHA-1 for the server pack setting is `c8e0b7506490ba0ff9a945dee127ab57befbd32a`.
+1. Host the [canonical, playtested source pack](https://raw.githubusercontent.com/kernel-person/shutterbug-renderer-examples/2baab5d1b9488a43d85456e6b6c73446ed626eb2/resourcepacks/village-trades-easel-resourcepack.zip) at an HTTPS URL reachable by players, not a localhost URL. Its SHA-1 for the server pack setting is `c8e0b7506490ba0ff9a945dee127ab57befbd32a` for those exact ZIP bytes only. If instead you host `village-trades-easel-resourcepack.zip` extracted from your MCModels examples download, compute the SHA-1 of the exact file you serve (`shasum -a 1 village-trades-easel-resourcepack.zip` on macOS or `sha1sum village-trades-easel-resourcepack.zip` on Linux); marketplace repacking changes ZIP bytes, so do not reuse the source-pack hash. Configure your server to offer the chosen pack.
 2. Start the server once to create `plugins/RendererPaintersEasel/config.yml`. Set `model-item: village_trades:painters_easel` and `brush-model-item: village_trades:paintbrush` there, then restart. Players must accept the pack to see the models.
 3. Use `/easel` to issue the easel and brush. Existing tagged brushes gain the brush model when their owner joins; ordinary tools stay unchanged. The blue tip is cosmetic—offhand dye still chooses the painting colour.
 
