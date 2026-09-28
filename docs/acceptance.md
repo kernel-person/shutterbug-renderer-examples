@@ -2,6 +2,8 @@
 
 Before distributing example JARs, use an isolated Paper26.2/Java25 server with the exact commercial renderer release. Do not test on a customer's server.
 
+Status on 2026-09-28: a human client playtest accepted the updated experience on the isolated development-overlay server. That is distinct from the historical automated checks below and does not validate the final personalized buyer download, clean commercial JARs, or final examples ZIP. Those exact artifacts still require the release acceptance pass before distribution.
+
 - Postcard produces a map; full inventory/disconnect cannot drop or duplicate delivery.
 - Ordinary dispensers are unchanged. Tagged camera responds once per rising edge, ignores sustained power and busy bursts, and refuses stale replaced/unloaded destinations.
 - Easel placement respects cancelled placement, is creator-only, captures one fixed reference, and preserves progress/maps across restart.
@@ -30,6 +32,8 @@ Exact example JAR SHA256 values tested on both platforms:
 | RendererRedstoneCamera.jar | `957adf22e1bec9be5ba886394cd32a54f543ddfa5f36689eee28c43caa817ae2` |
 | RendererPaintersEasel.jar | `342080bb4438718ced0eb6356d068f11b9ee8ccaa35f2e1d77365d17fac32324` |
 
-## Still requires a human in-game playtest
+## Human playtest and remaining release checks
 
-Painting feel, map texture/readability, all four visual orientations, survival/creative input from a real client, and interaction with the server owner's protection plugins. Run the checklist above on a disposable server before treating these examples as production gameplay. Unit tests cover the ray geometry and event cancellation but cannot establish visual quality. Windows is not covered or supported.
+The 2026-09-28 human client playtest accepted the corrected camera aim and the updated Painter's Easel painting/model/brush experience on an isolated localhost server. Those observations used development-overlay JARs and a supplied resource pack; they are not a buyer-download or exact final release acceptance claim. The historical 2026-09-27 table above covers older JAR bytes only and must not be reused as hashes for the updated examples.
+
+Still verify the exact final macOS ARM64 and Linux x86-64 commercial artifacts with personalized activation, a signed cached restart, a real render, the three examples, and the unmodified easel/brush pack. Record fresh JAR/ZIP hashes and separate automated, synthetic Paper, and human observations. Linux Docker `linux/amd64` emulation is not a physical Linux host test. Protection-plugin interactions, every visual orientation, and survival/creative client combinations beyond the accepted playtest remain unverified unless separately recorded. Windows is coming soon and is not supported by this release.

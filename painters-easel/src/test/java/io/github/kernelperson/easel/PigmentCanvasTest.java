@@ -45,4 +45,19 @@ class PigmentCanvasTest {
         assertThrows(IOException.class,()->PigmentCanvas.read(new ByteArrayInputStream(new byte[8])));
         assertThrows(IOException.class,()->PigmentCanvas.read(new ByteArrayInputStream(Arrays.copyOf(out.toByteArray(),20))));
     }
+    @Test void oneBroadDragFillsItsEntireColourChannelWithoutGaps() {
+        var canvas=new PigmentCanvas(solid(0,255,255));
+        canvas.strokeLine(20,64,100,64,12,0);
+        for(int x=20;x<=100;x++) for(int y=53;y<=75;y++) assertEquals(0x00ffff,canvas.rgb(x,y));
+        assertNotEquals(0x00ffff,canvas.rgb(64,51));
+        assertNotEquals(0x00ffff,canvas.rgb(6,64));
+        double done=canvas.progress();canvas.strokeLine(100,64,20,64,12,0);assertEquals(done,canvas.progress());
+    }
+    @Test void diagonalStrokeClipsAtCanvasEdgesAndWrongDyeStillDoesNothing() {
+        var canvas=new PigmentCanvas(solid(0,255,255));
+        canvas.strokeLine(0,0,127,127,12,1);assertEquals(0,canvas.progress());
+        canvas.strokeLine(0,0,127,127,12,0);
+        for(int i=0;i<128;i++) assertEquals(0x00ffff,canvas.rgb(i,i));
+        assertNotEquals(0x00ffff,canvas.rgb(0,127));
+    }
 }

@@ -9,6 +9,9 @@ import org.bukkit.event.block.*;
 import org.bukkit.event.entity.*;
 import org.bukkit.event.hanging.*;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
+import org.bukkit.event.player.PlayerAnimationEvent;
+import org.bukkit.event.player.PlayerAnimationType;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.world.*;
 import org.bukkit.inventory.*;
 import org.bukkit.persistence.PersistentDataType;
@@ -18,20 +21,37 @@ import java.awt.Color;
 import java.io.IOException;
 import java.util.*;
 
-/** Dummy model: fence, backboard, framed map. The renderer is used once per new painting. */
+/** Framed map with an optional native easel model. The renderer is used once per new painting. */
 public final class PaintersEaselPlugin extends JavaPlugin implements Listener {
     private NamespacedKey kind,ownerTag,baseTag;
     private RenderSession renders;
     private SavedMaps maps;
     private CanvasStore store;
+    private EaselModel models;
+    private NamespacedKey modelItem,brushModel;
     private final Map<UUID,Easel> easels=new HashMap<>();
     private static final class Easel {
         final ItemFrame frame; final UUID owner; final Block base;
-        PigmentCanvas canvas; byte[] palette; boolean capturing,dirty,blocked; long lastStroke;
+        PigmentCanvas canvas; byte[] palette; boolean capturing,dirty,blocked; long lastStroke,nextCaptureAttempt;
+        int lastX,lastY,lastPigment=-1;
         Easel(ItemFrame frame,UUID owner,Block base) {this.frame=frame;this.owner=owner;this.base=base;}
     }
     @Override public void onEnable() {
         kind=new NamespacedKey(this,"kind");ownerTag=new NamespacedKey(this,"owner");baseTag=new NamespacedKey(this,"base");
+        saveDefaultConfig();
+        String configuredModel=getConfig().getString("model-item","").trim();
+        String configuredBrush=getConfig().getString("brush-model-item","").trim();
+        if(!configuredBrush.isEmpty()) {
+            brushModel=NamespacedKey.fromString(configuredBrush);
+            if(brushModel==null) {getLogger().severe("Invalid brush-model-item namespace.");getServer().getPluginManager().disablePlugin(this);return;}
+        }
+        ItemStack visual=null;
+        if(!configuredModel.isEmpty()) {
+            modelItem=NamespacedKey.fromString(configuredModel);
+            if(modelItem==null) {getLogger().severe("Invalid model-item namespace; refusing to change easel visuals.");getServer().getPluginManager().disablePlugin(this);return;}
+            visual=new ItemStack(Material.PAPER);var meta=visual.getItemMeta();meta.setItemModel(modelItem);visual.setItemMeta(meta);
+        }
+        models=new EaselModel(new NamespacedKey(this,"native-model"),visual);
         maps=new SavedMaps(this);store=new CanvasStore(getDataFolder().toPath().resolve("canvases"));
         renders=new RenderSession(this);
         try {maps.restore();}
@@ -39,6 +59,7 @@ public final class PaintersEaselPlugin extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(this,this);
         getServer().getPluginManager().registerEvents(renders,this);
         for(World world:getServer().getWorlds()) for(Chunk chunk:world.getLoadedChunks()) load(chunk);
+        for(Player player:getServer().getOnlinePlayers()) refreshBrushes(player);
         getServer().getScheduler().runTaskTimer(this,()->easels.values().forEach(this::save),100,100);
     }
     @Override public boolean onCommand(CommandSender sender,Command command,String label,String[] args) {
@@ -60,15 +81,28 @@ public final class PaintersEaselPlugin extends JavaPlugin implements Listener {
         int free=0;for(ItemStack slot:player.getInventory().getStorageContents()) if(slot==null||slot.getType().isAir()) free++;
         if(free<2) {player.sendMessage("Make two inventory spaces first.");return true;}
         player.getInventory().addItem(easel,brush);
-        player.sendMessage("Place the easel. Brush + right-click starts a canvas; offhand CMY dye + punch paints; sneak + right-click collects.");
+        player.sendMessage("Place the easel. Brush + right-click captures; hold right-click and drag with offhand CMY dye to paint; sneak + right-click collects.");
         return true;
     }
     private ItemStack item(Material material,String type,String name) {
         var item=new ItemStack(material);var meta=item.getItemMeta();meta.setDisplayName(name);
+        if(type.equals("easel")&&modelItem!=null) meta.setItemModel(modelItem);
+        if(type.equals("brush")&&brushModel!=null) meta.setItemModel(brushModel);
         meta.getPersistentDataContainer().set(kind,PersistentDataType.STRING,type);item.setItemMeta(meta);return item;
     }
     private boolean tagged(ItemStack item,String type) {
         return item!=null&&item.hasItemMeta()&&type.equals(item.getItemMeta().getPersistentDataContainer().get(kind,PersistentDataType.STRING));
+    }
+    @EventHandler public void joined(PlayerJoinEvent event) {refreshBrushes(event.getPlayer());}
+    void refreshBrushes(Player player) {
+        if(brushModel==null) return;
+        ItemStack[] contents=player.getInventory().getContents();
+        for(int slot=0;slot<contents.length;slot++) {
+            ItemStack item=contents[slot];if(!tagged(item,"brush")) continue;
+            var meta=item.getItemMeta();if(brushModel.equals(meta.getItemModel())) continue;
+            meta.setItemModel(brushModel);item.setItemMeta(meta);
+            player.getInventory().setItem(slot,item);
+        }
     }
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true)
     public void place(BlockPlaceEvent event) {
@@ -110,8 +144,9 @@ public final class PaintersEaselPlugin extends JavaPlugin implements Listener {
             Easel easel=new Easel(frame,event.getPlayer().getUniqueId(),base);
             easels.put(frame.getUniqueId(),easel);
             frame.setItem(maps.create(base.getWorld(),blank(),"Blank Canvas"),false);
+            if(models!=null) models.apply(frame,base);
         } catch(RuntimeException|IOException failure) {
-            if(frame!=null) {easels.remove(frame.getUniqueId());frame.remove();}
+            if(frame!=null) {if(models!=null) models.unload(frame);easels.remove(frame.getUniqueId());frame.remove();}
             original.update(true,false);rollbackBase(event);event.getPlayer().sendMessage("Could not place the easel.");
         }
     }
@@ -137,6 +172,10 @@ public final class PaintersEaselPlugin extends JavaPlugin implements Listener {
             // Ownership survives bad files and the active-work cap. Never expose a saved map to theft.
             easel.blocked=easels.size()>=128;
             easels.put(frame.getUniqueId(),easel);
+            if(models!=null) {
+                try {models.apply(frame,easel.base);}
+                catch(RuntimeException failure) {getLogger().warning("Could not restore easel model; canvas and ownership retained.");}
+            }
             if(easel.blocked) continue;
             try {
                 easel.canvas=store.load(frame.getUniqueId());
@@ -152,7 +191,8 @@ public final class PaintersEaselPlugin extends JavaPlugin implements Listener {
         for(Easel easel:List.copyOf(easels.values()))
             if(easel.frame.getWorld().equals(event.getWorld())&&easel.frame.getLocation().getBlockX()>>4==event.getChunk().getX()
                     &&easel.frame.getLocation().getBlockZ()>>4==event.getChunk().getZ()) {
-                save(easel);renders.invalidate(easel.frame.getUniqueId().toString());easels.remove(easel.frame.getUniqueId());
+                save(easel);if(models!=null) models.unload(easel.frame);
+                renders.invalidate(easel.frame.getUniqueId().toString());easels.remove(easel.frame.getUniqueId());
             }
     }
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true)
@@ -165,9 +205,11 @@ public final class PaintersEaselPlugin extends JavaPlugin implements Listener {
                 ||!tagged(player.getInventory().getItemInMainHand(),"brush")) return;
         if(player.isSneaking()) collect(easel,player);
         else if(easel.canvas==null&&!easel.capturing) start(easel,player);
-        else player.sendMessage("Paint with the brush and cyan, magenta or yellow dye in your offhand.");
+        else if(easel.canvas!=null&&!easel.capturing) paint(easel,player);
     }
     private void start(Easel easel,Player player) {
+        long now=System.nanoTime();if(now<easel.nextCaptureAttempt) return;
+        easel.nextCaptureAttempt=now+5_000_000_000L;
         if(easel.frame.getItem().getType()!=Material.FILLED_MAP) {
             try {easel.frame.setItem(maps.create(easel.base.getWorld(),blank(),"Blank Canvas"),false);}
             catch(IOException failure) {player.sendMessage("Cannot save a new canvas.");return;}
@@ -188,6 +230,21 @@ public final class PaintersEaselPlugin extends JavaPlugin implements Listener {
                 &&easel.frame.getWorld().isChunkLoaded(easel.frame.getLocation().getBlockX()>>4,easel.frame.getLocation().getBlockZ()>>4);
     }
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true)
+    public void brushSwing(PlayerAnimationEvent event) {
+        // A real creative-mode brush click can deliver a swing without damaging the frame.
+        if(event.isCancelled()||event.getAnimationType()!=PlayerAnimationType.ARM_SWING) return;
+        Player player=event.getPlayer();
+        if(player.getGameMode()==GameMode.SPECTATOR||!tagged(player.getInventory().getItemInMainHand(),"brush")) return;
+        var eye=player.getEyeLocation();
+        var target=player.getWorld().rayTraceEntities(eye,eye.getDirection(),5,entity->easels.containsKey(entity.getUniqueId()));
+        if(target==null||target.getHitEntity()==null) return;
+        var obstruction=player.getWorld().rayTraceBlocks(eye,eye.getDirection(),5,FluidCollisionMode.NEVER,true);
+        if(obstruction!=null&&obstruction.getHitPosition().distanceSquared(eye.toVector())
+                <target.getHitPosition().distanceSquared(eye.toVector())) return;
+        Easel easel=easels.get(target.getHitEntity().getUniqueId());
+        if(easel!=null) paint(easel,player);
+    }
+    @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true)
     public void damage(EntityDamageEvent event) {
         Easel easel=easels.get(event.getEntity().getUniqueId());if(easel==null) return;
         event.setCancelled(true);
@@ -200,21 +257,30 @@ public final class PaintersEaselPlugin extends JavaPlugin implements Listener {
         if(event instanceof HangingBreakByEntityEvent hit&&hit.getRemover() instanceof Player player) paint(easel,player);
     }
     private void paint(Easel easel,Player player) {
-        if(easel.blocked||!easel.owner.equals(player.getUniqueId())||easel.canvas==null
+        if(easel.blocked||player.getGameMode()==GameMode.SPECTATOR||!easel.owner.equals(player.getUniqueId())||easel.canvas==null
                 ||!tagged(player.getInventory().getItemInMainHand(),"brush")) return;
         int pigment=switch(player.getInventory().getItemInOffHand().getType()) {
             case CYAN_DYE -> 0;case MAGENTA_DYE -> 1;case YELLOW_DYE -> 2;default -> -1;
         };
-        if(pigment<0) {player.sendMessage("Put cyan, magenta or yellow dye in your offhand.");return;}
-        long now=System.nanoTime();if(now-easel.lastStroke<100_000_000L) return;easel.lastStroke=now;
+        if(pigment<0) return; // Setup instructions already explain the dye; never spam held input.
+        long now=System.nanoTime();if(now-easel.lastStroke<100_000_000L) return;
         var eye=player.getEyeLocation();
-        var hit=CanvasHit.intersect(eye.toVector(),eye.getDirection(),easel.frame.getLocation().toVector(),easel.frame.getFacing().getDirection());
+        var center=easel.frame.getLocation().toVector();
+        if(!easel.frame.isVisible()) center.add(easel.frame.getFacing().getDirection().multiply(EaselModel.MAP_FACE_OFFSET));
+        var hit=CanvasHit.intersect(eye.toVector(),eye.getDirection(),center,easel.frame.getFacing().getDirection());
         if(hit==null) return;
-        easel.canvas.stroke(hit.x(),hit.y(),8,pigment);
-        for(int y=Math.max(0,hit.y()-8);y<=Math.min(127,hit.y()+8);y++)
-            for(int x=Math.max(0,hit.x()-8);x<=Math.min(127,hit.x()+8);x++)
+        boolean continuing=now-easel.lastStroke<=500_000_000L&&easel.lastPigment==pigment;
+        int fromX=continuing?easel.lastX:hit.x(),fromY=continuing?easel.lastY:hit.y();
+        easel.canvas.strokeLine(fromX,fromY,hit.x(),hit.y(),12,pigment);
+        easel.lastX=hit.x();easel.lastY=hit.y();easel.lastPigment=pigment;easel.lastStroke=now;
+        for(int y=Math.max(0,Math.min(fromY,hit.y())-12);y<=Math.min(127,Math.max(fromY,hit.y())+12);y++)
+            for(int x=Math.max(0,Math.min(fromX,hit.x())-12);x<=Math.min(127,Math.max(fromX,hit.x())+12);x++)
                 easel.palette[y*128+x]=color(easel.canvas.rgb(x,y));
         maps.update(maps.id(easel.frame.getItem()),easel.palette);easel.dirty=true;
+        // Item-frame map broadcasts are periodic. Give the painter feedback now,
+        // after updating the renderer, rather than waiting for that broadcast.
+        var view=getServer().getMap(maps.id(easel.frame.getItem()));
+        if(view!=null) player.sendMap(view);
         player.spigot().sendMessage(net.md_5.bungee.api.ChatMessageType.ACTION_BAR,
                 new net.md_5.bungee.api.chat.TextComponent(String.format(Locale.ROOT,"Painting: %.1f%%",easel.canvas.progress()*100)));
     }
@@ -234,6 +300,7 @@ public final class PaintersEaselPlugin extends JavaPlugin implements Listener {
         catch(IOException|RuntimeException failure) {getLogger().warning("Could not save an easel; check disk space.");}
     }
     private void remove(Easel easel) {
+        if(models!=null) models.remove(easel.frame,easel.base);
         renders.invalidate(easel.frame.getUniqueId().toString());easels.remove(easel.frame.getUniqueId());easel.frame.remove();
         if(easel.base.getType()==Material.OAK_FENCE) easel.base.setType(Material.AIR);
         Block board=easel.base.getRelative(BlockFace.UP);if(board.getType()==Material.OAK_PLANKS) board.setType(Material.AIR);
@@ -266,5 +333,6 @@ public final class PaintersEaselPlugin extends JavaPlugin implements Listener {
     @SuppressWarnings("deprecation") private static byte color(int rgb) {return MapPalette.matchColor(new Color(rgb));}
     @Override public void onDisable() {
         if(renders!=null) renders.close();easels.values().forEach(this::save);easels.clear();
+        if(models!=null) models.close();
     }
 }

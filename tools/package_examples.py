@@ -1,15 +1,19 @@
 """Package ONLY the three public examples; no provider, native library, test probe or credentials."""
 import argparse
 import hashlib
+import ipaddress
 import io
 import json
 from pathlib import Path
+import re
 import subprocess
 import zipfile
 
 MODULES=(('postcards','RendererPostcards','postcards'),
          ('redstone-camera','RendererRedstoneCamera','camera'),
          ('painters-easel','RendererPaintersEasel','easel'))
+RESOURCE_PACK='village-trades-easel-resourcepack.zip'
+RESOURCE_PACK_SHA256='2d9f58a89a8869bfb8d1d64026731023c568ae403d4e31829a5ed247da1a963e'
 
 def verify_jar(data,package):
     with zipfile.ZipFile(io.BytesIO(data)) as jar:
@@ -20,12 +24,32 @@ def verify_jar(data,package):
             raise ValueError('Provider dependency must be explicit')
         for name in names:
             if name.endswith('/'): continue
-            allowed=(name=='plugin.yml' or name.startswith('META-INF/') or
+            allowed=(name=='plugin.yml' or (package=='easel' and name=='config.yml') or name.startswith('META-INF/') or
                      (name.startswith('io/github/kernelperson/'+package+'/') and name.endswith('.class')))
             if not allowed or name.lower().endswith(('.dll','.so','.dylib','.key','.pem')):
                 raise ValueError('Unexpected JAR member: '+name)
-            if any(secret in jar.read(name) for secret in (b'-----BEGIN PRIVATE KEY-----',b'-----BEGIN OPENSSH PRIVATE KEY-----',b'ric-license-platform-production.')):
+            content=jar.read(name)
+            if any(secret in content for secret in (b'-----BEGIN PRIVATE KEY-----',b'-----BEGIN OPENSSH PRIVATE KEY-----',b'ric-license-platform-production.')):
                 raise ValueError('Sensitive build input in JAR')
+            if name=='config.yml':
+                if any(host in content.lower() for host in (b'localhost',b'127.0.0.1')):
+                    raise ValueError('Localhost resource-pack URL in default config')
+                for host in re.findall(rb'\[([^\]]+)\]',content):
+                    try: address=ipaddress.ip_address(host.split(b'%',1)[0].decode('ascii'))
+                    except (UnicodeDecodeError,ValueError): continue
+                    if address.is_loopback:
+                        raise ValueError('Localhost resource-pack URL in default config')
+
+def collect_files(root):
+    files={name:(root/name).read_bytes() for name in ('README.md','LICENSE','docs/acceptance.md')}
+    for module,name,package in MODULES:
+        data=(root/module/'target'/(name+'.jar')).read_bytes()
+        verify_jar(data,package);files[name+'.jar']=data
+    pack=(root/'resourcepacks'/RESOURCE_PACK).read_bytes()
+    if hashlib.sha256(pack).hexdigest()!=RESOURCE_PACK_SHA256:
+        raise ValueError('Supplied easel/brush resource pack differs from reviewed artwork')
+    files[RESOURCE_PACK]=pack
+    return files
 
 def make_zip(files):
     output=io.BytesIO()
@@ -43,10 +67,7 @@ def main():
     root=Path(__file__).resolve().parents[1]
     def git(*command): return subprocess.check_output(['git',*command],cwd=root,text=True).strip()
     if git('status','--porcelain'): raise SystemExit('Commit reviewed source before packaging')
-    files={name:(root/name).read_bytes() for name in ('README.md','LICENSE','docs/acceptance.md')}
-    for module,name,package in MODULES:
-        data=(root/module/'target'/(name+'.jar')).read_bytes()
-        verify_jar(data,package);files[name+'.jar']=data
+    files=collect_files(root)
     manifest={'version':'1.0.0','sourceCommit':git('rev-parse','HEAD'),
               'source':'https://github.com/kernel-person/shutterbug-renderer-examples',
               'providerIncluded':False,'testProbeIncluded':False,

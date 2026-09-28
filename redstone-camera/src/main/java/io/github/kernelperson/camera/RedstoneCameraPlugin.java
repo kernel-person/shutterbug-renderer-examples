@@ -39,7 +39,7 @@ public final class RedstoneCameraPlugin extends JavaPlugin implements Listener {
         var meta=item.getItemMeta();meta.setDisplayName("Redstone Camera");
         meta.getPersistentDataContainer().set(tag,PersistentDataType.STRING,"camera-item");
         item.setItemMeta(meta);player.getInventory().setItem(slot,item);
-        player.sendMessage("Place the camera facing your view, then pulse adjacent redstone. Photos appear inside.");
+        player.sendMessage("Placement remembers your exact look angle (including up/down). Pulse adjacent redstone; photos appear inside.");
         return true;
     }
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true)
@@ -52,6 +52,8 @@ public final class RedstoneCameraPlugin extends JavaPlugin implements Listener {
         data.setFacing(event.getPlayer().getFacing()); dispenser.setBlockData(data);
         String id=UUID.randomUUID().toString();
         dispenser.getPersistentDataContainer().set(tag,PersistentDataType.STRING,id);
+        Location view=event.getPlayer().getEyeLocation();
+        new CameraPose(view.getYaw(),view.getPitch()).save(dispenser);
         dispenser.update(true,false); remember(dispenser.getBlock(),id);
     }
     private void remember(Block block,String id) {
@@ -107,9 +109,8 @@ public final class RedstoneCameraPlugin extends JavaPlugin implements Listener {
     private void capture(CameraTarget camera) {
         Dispenser dispenser=(Dispenser)camera.block().getState();
         if(dispenser.getInventory().firstEmpty()<0) { feedback(camera,false);return; }
-        BlockFace facing=((Directional)dispenser.getBlockData()).getFacing();
-        Location lens=camera.block().getLocation().add(.5,.5,.5).add(facing.getDirection().multiply(.7));
-        lens.setDirection(facing.getDirection());
+        CameraPose pose=CameraPose.read(dispenser);
+        Location lens=CameraPose.lens(camera.block().getLocation(),pose.yaw(),pose.pitch());
         renders.request(camera.id(),lens,camera::valid,frame->{
             if(!camera.valid()) return;
             Dispenser current=(Dispenser)camera.block().getState();

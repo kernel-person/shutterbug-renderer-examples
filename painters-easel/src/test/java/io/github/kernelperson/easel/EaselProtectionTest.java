@@ -61,6 +61,12 @@ class EaselProtectionTest {
         assertProtected(plugin,frame);
         assertArrayEquals(new byte[]{1,2,3},Files.readAllBytes(folder.resolve(frame.getUniqueId()+".cmy")));
     }
+    @Test void loadingSavedFrameRestoresModelAndDisableClosesVisuals() throws Exception {
+        var plugin=plugin();var models=mock(EaselModel.class);set(plugin,"models",models);
+        var frame=frame();load(plugin,frame);
+        verify(models).apply(eq(frame),any(Block.class));
+        plugin.onDisable();verify(models).close();verify(frame,never()).remove();
+    }
     @Test void RestoredFramesOverActiveLimitRemainProtected() throws Exception {
         var plugin=plugin();ItemFrame last=null;
         for(int i=0;i<130;i++) {last=frame();load(plugin,last);}

@@ -1,0 +1,6 @@
+# Leave blank for the no-resource-pack fence/backboard example.
+# For the supplied 26.2 easel pack, use village_trades:painters_easel.
+# Serve that pack to clients with the server's resource-pack settings.
+model-item: ''
+# Matching cosmetic tool from the same pack: village_trades:paintbrush.
+brush-model-item: ''

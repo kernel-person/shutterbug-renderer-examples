@@ -12,14 +12,20 @@ final class PigmentCanvas {
     }
     /** CMY channels are RGB complements. Wrong pigment is ignored, never allowed to spoil the target. */
     void stroke(int x,int y,int radius,int pigment) {
-        if(x<0||x>=128||y<0||y>=128||radius<1||radius>32||pigment<0||pigment>2) throw new IllegalArgumentException();
-        for(int py=Math.max(0,y-radius);py<=Math.min(127,y+radius);py++)
-            for(int px=Math.max(0,x-radius);px<=Math.min(127,x+radius);px++) {
-                double weight=1-Math.hypot(px-x,py-y)/radius;
-                if(weight<=0) continue;
+        strokeLine(x,y,x,y,radius,pigment);
+    }
+    /** A round brush swept along the input segment; each pass fills the selected channel. */
+    void strokeLine(int fromX,int fromY,int x,int y,int radius,int pigment) {
+        if(fromX<0||fromX>=128||fromY<0||fromY>=128||x<0||x>=128||y<0||y>=128
+                ||radius<1||radius>32||pigment<0||pigment>2) throw new IllegalArgumentException();
+        double dx=x-fromX,dy=y-fromY,lengthSquared=dx*dx+dy*dy;
+        for(int py=Math.max(0,Math.min(fromY,y)-radius);py<=Math.min(127,Math.max(fromY,y)+radius);py++)
+            for(int px=Math.max(0,Math.min(fromX,x)-radius);px<=Math.min(127,Math.max(fromX,x)+radius);px++) {
+                double t=lengthSquared==0?0:Math.max(0,Math.min(1,((px-fromX)*dx+(py-fromY)*dy)/lengthSquared));
+                double ox=px-fromX-t*dx,oy=py-fromY-t*dy;
+                if(ox*ox+oy*oy>=radius*radius) continue;
                 int at=(py*128+px)*3+pigment;
-                int dose=Math.max(1,(int)Math.round(64*weight));
-                applied[at]=(byte)Math.min(needed[at]&255,(applied[at]&255)+dose);
+                applied[at]=needed[at];
             }
     }
     int rgb(int x,int y) {

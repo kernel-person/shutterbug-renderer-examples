@@ -10,6 +10,7 @@ import org.bukkit.event.entity.*;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.inventory.*;
 import org.bukkit.inventory.meta.MapMeta;
+import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
 import java.lang.reflect.*;
 import java.nio.file.*;
@@ -21,6 +22,10 @@ import java.util.*;
  */
 public final class ExamplesProbe extends JavaPlugin {
     private static final UUID OWNER=UUID.fromString("48fcf80c-5232-4459-bedd-39a46db6bc9c");
+    private static final NamespacedKey EASEL_MODEL=NamespacedKey.fromString("village_trades:painters_easel");
+    private static final NamespacedKey BRUSH_MODEL=NamespacedKey.fromString("village_trades:paintbrush");
+    private static final NamespacedKey CAMERA_YAW=new NamespacedKey("rendererredstonecamera","yaw");
+    private static final NamespacedKey CAMERA_PITCH=new NamespacedKey("rendererredstonecamera","pitch");
     private final ItemStack[] inventory=new ItemStack[41];
     private Player player;
     private Location eye;
@@ -32,6 +37,7 @@ public final class ExamplesProbe extends JavaPlugin {
     private ItemStack brush;
     private boolean restart;
     private int baseX,baseY,baseZ;
+    private double firstStrokeProgress;
     @Override public void onEnable() {
         getServer().getScheduler().runTaskTimer(this,()->{
             try {tick();} catch(Throwable error) {
@@ -65,6 +71,7 @@ public final class ExamplesProbe extends JavaPlugin {
             check(((MapMeta)postcard.getItemMeta()).hasMapView(),"postcard map");
             getLogger().info("EXAMPLES_POSTCARD_OK");
             Arrays.fill(inventory,null);
+            eye.setYaw(37);eye.setPitch(-25);
             command("rendercamera");
             ItemStack item=find(Material.DISPENSER);check(item!=null,"camera item");
             camera=world.getBlockAt(baseX+4,baseY,baseZ);
@@ -72,6 +79,7 @@ public final class ExamplesProbe extends JavaPlugin {
             inventory[0]=item;
             var place=new BlockPlaceEvent(camera,before,camera.getRelative(BlockFace.DOWN),item,player,true,EquipmentSlot.HAND);
             getServer().getPluginManager().callEvent(place);check(!place.isCancelled(),"camera placement");
+            verifyCameraPose();
             world.getBlockAt(baseX+5,baseY,baseZ).setType(Material.REDSTONE_BLOCK);
             stage=2;
         } else if(stage==2) {
@@ -82,6 +90,8 @@ public final class ExamplesProbe extends JavaPlugin {
             Arrays.fill(inventory,null);command("easel");
             ItemStack easel=find(Material.OAK_FENCE);brush=find(Material.BRUSH);
             check(easel!=null&&brush!=null,"easel equipment");
+            check(EASEL_MODEL.equals(easel.getItemMeta().getItemModel()),"supplied easel item model");
+            check(BRUSH_MODEL.equals(brush.getItemMeta().getItemModel()),"supplied brush item model");
             Block base=world.getBlockAt(baseX+12,baseY,baseZ);
             BlockState before=base.getState();base.setType(Material.OAK_FENCE);
             inventory[0]=easel;
@@ -91,6 +101,7 @@ public final class ExamplesProbe extends JavaPlugin {
         } else if(stage==20) {
             Block base=world.getBlockAt(baseX+12,baseY,baseZ);
             frame=world.getEntitiesByClass(ItemFrame.class).stream().filter(e->e.getLocation().distanceSquared(base.getLocation())<10).findFirst().orElseThrow();
+            verifyNativeModel();
             inventory[0]=brush;
             aim();
             getServer().getPluginManager().callEvent(new PlayerInteractEntityEvent(player,frame,EquipmentSlot.HAND));
@@ -102,14 +113,17 @@ public final class ExamplesProbe extends JavaPlugin {
             stage=4;
         } else if(stage==4) {
             inventory[40]=new ItemStack(new Material[]{Material.CYAN_DYE,Material.MAGENTA_DYE,Material.YELLOW_DYE}[stroke/4]);
-            var hit=new EntityDamageByEntityEvent(player,frame,EntityDamageEvent.DamageCause.ENTITY_ATTACK,1);
-            getServer().getPluginManager().callEvent(hit);check(hit.isCancelled(),"frame protected from punches");
+            aim();eye.add((stroke%4-1.5)*.18,0,0);
+            var click=new PlayerInteractEntityEvent(player,frame,EquipmentSlot.HAND);
+            getServer().getPluginManager().callEvent(click);check(click.isCancelled(),"frame protected during held right-click");
+            if(stroke==0) firstStrokeProgress=progress(canvas());
             if(++stroke<12) return;
             check(progress(canvas())>0,"painting advances");
+            check(progress(canvas())>firstStrokeProgress,"continued right-click drag adds pigment");
             check(actionBars>0,"painting progress action bar delivered");
             double before=progress(canvas());
             Player intruder=fakePlayer(UUID.fromString("e89799f4-aed5-4e21-b7df-67376c933ea8"));
-            getServer().getPluginManager().callEvent(new EntityDamageByEntityEvent(intruder,frame,EntityDamageEvent.DamageCause.ENTITY_ATTACK,1));
+            getServer().getPluginManager().callEvent(new PlayerInteractEntityEvent(intruder,frame,EquipmentSlot.HAND));
             check(progress(canvas())==before,"other player cannot paint");
             Files.createDirectories(getDataFolder().toPath());
             Files.writeString(getDataFolder().toPath().resolve("restart.flag"),baseY+"\n"+frame.getUniqueId());
@@ -118,6 +132,7 @@ public final class ExamplesProbe extends JavaPlugin {
             stage=99;getServer().getScheduler().cancelTasks(this);
         } else if(stage==10) {
             check(frame!=null&&canvas()!=null,"easel restored after restart");
+            verifyNativeModel();verifyCameraPose();
             check(progress(canvas())>0,"pigment progress restored");
             int mapId=((MapMeta)frame.getItem().getItemMeta()).getMapId();
             check(getServer().getMap(mapId).getRenderers().stream().anyMatch(r->r.getClass().getName().startsWith("io.github.kernelperson.easel")),"persistent map renderer restored");
@@ -130,7 +145,14 @@ public final class ExamplesProbe extends JavaPlugin {
             getServer().getPluginManager().callEvent(new PlayerInteractEntityEvent(player,frame,EquipmentSlot.HAND));
             check(mapCount()==count,"no duplicate collection");
             check(Arrays.stream(((Dispenser)camera.getState()).getInventory().getContents()).filter(Objects::nonNull).filter(i->i.getType()==Material.FILLED_MAP).count()==1,"sustained power/restart does not repeat camera shot");
+            Location modelLocation=frame.getLocation().clone();
+            sneaking=false;command("easel","remove");
+            check(!frame.isValid(),"easel frame removed");
+            Block base=world.getBlockAt(baseX+12,baseY,baseZ);
+            check(base.getType()==Material.AIR&&base.getRelative(BlockFace.UP).getType()==Material.AIR,"native easel support removed");
+            check(nativeDisplays(modelLocation).isEmpty(),"native display removed with easel");
             getLogger().info("EXAMPLES_RESTART_COLLECTION_OK");
+            getLogger().info("EXAMPLES_NATIVE_EASEL_REMOVAL_OK");
             getLogger().info("EXAMPLES_PROBE_OK phase=restart");
             stage=99;getServer().getScheduler().cancelTasks(this);
         }
@@ -150,13 +172,35 @@ public final class ExamplesProbe extends JavaPlugin {
     private double progress(Object canvas) throws Exception {
         Method method=canvas.getClass().getDeclaredMethod("progress");method.setAccessible(true);return (double)method.invoke(canvas);
     }
+    private void verifyCameraPose() {
+        Dispenser state=(Dispenser)camera.getState();
+        Float yaw=state.getPersistentDataContainer().get(CAMERA_YAW,PersistentDataType.FLOAT);
+        Float pitch=state.getPersistentDataContainer().get(CAMERA_PITCH,PersistentDataType.FLOAT);
+        check(yaw!=null&&Math.abs(yaw-37)<.001&&pitch!=null&&Math.abs(pitch+25)<.001,
+                "camera exact yaw/pitch survives capture and restart");
+    }
+    private List<ItemDisplay> nativeDisplays(Location near) {
+        return world.getEntitiesByClass(ItemDisplay.class).stream()
+                .filter(Entity::isValid).filter(display->display.getLocation().distanceSquared(near)<4).toList();
+    }
+    private void verifyNativeModel() {
+        Block base=world.getBlockAt(baseX+12,baseY,baseZ);
+        check(base.getType()==Material.BARRIER&&base.getRelative(BlockFace.UP).getType()==Material.BARRIER,
+                "native easel support barriers");
+        check(!frame.isVisible()&&frame.isFixed(),"native easel frame state");
+        List<ItemDisplay> displays=nativeDisplays(frame.getLocation());
+        check(displays.size()==1,"exactly one native easel display");
+        ItemStack visual=displays.getFirst().getItemStack();
+        check(visual.getType()==Material.PAPER&&EASEL_MODEL.equals(visual.getItemMeta().getItemModel()),
+                "native display uses supplied model");
+    }
     private void aim() {
         eye=frame.getLocation().add(frame.getFacing().getDirection().multiply(2));
         eye.setDirection(frame.getFacing().getOppositeFace().getDirection());
     }
-    private void command(String name) {
+    private void command(String name,String... args) {
         PluginCommand command=getServer().getPluginCommand(name);check(command!=null,"command exists");
-        command.execute(player,name,new String[0]);
+        command.execute(player,name,args);
     }
     private ItemStack find(Material material) {return Arrays.stream(inventory).filter(Objects::nonNull).filter(i->i.getType()==material).findFirst().orElse(null);}
     private long mapCount() {return Arrays.stream(inventory).filter(Objects::nonNull).filter(i->i.getType()==Material.FILLED_MAP).count();}

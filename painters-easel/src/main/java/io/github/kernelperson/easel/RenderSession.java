@@ -49,20 +49,20 @@ final class RenderSession implements Listener, AutoCloseable {
             owner.capture(new CaptureRequest(camera.clone(), 32, SETTINGS, 4)).whenComplete((scene, error) ->
                 onMain(() -> {
                     if (!usable(request)) return;
-                    if (error != null) { fail(request, safeError(error)); return; }
+                    if (error != null) { fail(request, "capture", error); return; }
                     try {
                         if (owner != client || !owner.active()) { fail(request, "Renderer was reloaded; try again."); return; }
                         request.task = owner.submit(new RenderJob(1, scene, SETTINGS));
                         request.task.completion().whenComplete((frame, problem) -> onMain(() -> {
                             if (!usable(request)) return;
-                            if (problem != null) { fail(request, safeError(problem)); return; }
+                            if (problem != null) { fail(request, "render", problem); return; }
                             finish(request);
                             request.success.accept(frame);
                         }));
-                    } catch (RuntimeException problem) { fail(request, safeError(problem)); }
+                    } catch (RuntimeException problem) { fail(request, "submit", problem); }
                 }));
             return true;
-        } catch (RuntimeException error) { fail(request, safeError(error)); return false; }
+        } catch (RuntimeException error) { fail(request, "setup", error); return false; }
     }
     private boolean usable(Pending request) {
         if (closed || !gate.current(request.key, request.token)) return false;
@@ -79,6 +79,13 @@ final class RenderSession implements Listener, AutoCloseable {
         finish(request);
         if (request.task != null) request.task.cancel();
         request.failure.accept(message);
+    }
+    private void fail(Pending request, String phase, Throwable error) {
+        if (!gate.current(request.key, request.token)) return;
+        RendererException renderer = rendererFailure(error);
+        if (renderer != null && renderer.code() == RenderFailureCode.MEMORY_LIMIT)
+            plugin.getLogger().warning("Renderer failure phase=" + phase + " code=MEMORY_LIMIT reason=" + memoryReason(renderer));
+        fail(request, safeError(error));
     }
     void invalidate(String key) {
         Pending request = pending.get(key);
@@ -110,10 +117,35 @@ final class RenderSession implements Listener, AutoCloseable {
         client = null;
     }
     private static String safeError(Throwable error) {
-        Throwable cause = error;
-        while (cause.getCause() != null && cause.getCause() != cause) cause = cause.getCause();
-        return cause instanceof RendererException renderer
+        RendererException renderer = rendererFailure(error);
+        if (renderer != null && renderer.code() == RenderFailureCode.MEMORY_LIMIT) {
+            return switch (memoryReason(renderer)) {
+                case "per-request-admission" -> "This view exceeds the renderer memory limit. Try a less crowded area or ask an administrator.";
+                case "aggregate-admission" -> "Renderer capacity is busy. Try again shortly.";
+                default -> "Renderer memory limit reached. Try again later or ask an administrator.";
+            };
+        }
+        return renderer != null
                 ? "Renderer failed (" + renderer.code() + "). Check the operator guide."
                 : "Capture failed. Ensure nearby chunks are loaded and the Renderer is available.";
+    }
+    private static RendererException rendererFailure(Throwable error) {
+        Throwable cause = error;
+        while (cause != null) {
+            if (cause instanceof RendererException renderer) return renderer;
+            if (cause.getCause() == cause) break;
+            cause = cause.getCause();
+        }
+        return null;
+    }
+    private static String memoryReason(RendererException renderer) {
+        String message = renderer.getMessage();
+        if ("request live memory exceeds effective limit".equals(message)) return "per-request-admission";
+        if ("aggregate provider residency exceeds limit".equals(message)) return "aggregate-admission";
+        if ("provider residency overflow".equals(message)) return "provider-overflow";
+        if ("registered asset memory limit exceeded".equals(message)) return "asset-admission";
+        if ("compact native renderer failed".equals(message)) return "native-compact";
+        if ("native memory limit exceeded".equals(message)) return "native-render";
+        return "unspecified";
     }
 }

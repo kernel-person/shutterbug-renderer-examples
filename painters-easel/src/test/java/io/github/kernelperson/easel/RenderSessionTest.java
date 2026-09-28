@@ -8,6 +8,7 @@ import org.junit.jupiter.api.*;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
+import java.util.logging.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -24,10 +25,19 @@ class RenderSessionTest {
     List<Runnable> deadlines = new ArrayList<>();
     AtomicInteger deliveries = new AtomicInteger();
     List<String> failures = new ArrayList<>();
+    List<String> diagnostics = new ArrayList<>();
+    Logger logger = Logger.getAnonymousLogger();
     RenderSession session;
     Location location = new Location(mock(World.class), 1, 64, 2);
 
     @BeforeEach void setup() {
+        logger.setUseParentHandlers(false);
+        logger.addHandler(new Handler() {
+            @Override public void publish(LogRecord record) { diagnostics.add(record.getMessage()); }
+            @Override public void flush() {}
+            @Override public void close() {}
+        });
+        when(plugin.getLogger()).thenReturn(logger);
         when(plugin.getServer()).thenReturn(server);
         when(plugin.isEnabled()).thenReturn(true);
         when(server.getScheduler()).thenReturn(scheduler);
@@ -119,5 +129,31 @@ class RenderSessionTest {
         captured.complete(mock(Scene.class)); drain();
         verify(client, never()).submit(any());
         assertEquals(0, deliveries.get());
+    }
+    @Test void submitMemoryLimitLogsSafeAdmissionReason() {
+        when(client.submit(any())).thenThrow(new RendererException(RenderFailureCode.MEMORY_LIMIT,
+                "request live memory exceeds effective limit"));
+        assertTrue(start(() -> true));
+        captured.complete(mock(Scene.class)); drain();
+        assertEquals(List.of("This view exceeds the renderer memory limit. Try a less crowded area or ask an administrator."), failures);
+        assertEquals(List.of("Renderer failure phase=submit code=MEMORY_LIMIT reason=per-request-admission"), diagnostics);
+    }
+    @Test void aggregateMemoryLimitAdvisesOneShortRetryWithoutExposingProviderDetails() {
+        when(client.submit(any())).thenThrow(new RendererException(RenderFailureCode.MEMORY_LIMIT,
+                "aggregate provider residency exceeds limit"));
+        assertTrue(start(() -> true));
+        captured.complete(mock(Scene.class)); drain();
+        assertEquals(List.of("Renderer capacity is busy. Try again shortly."), failures);
+        assertEquals(List.of("Renderer failure phase=submit code=MEMORY_LIMIT reason=aggregate-admission"), diagnostics);
+    }
+    @Test void wrappedRenderMemoryLimitKeepsCodeAndNeverLogsCauseText() {
+        assertTrue(start(() -> true));
+        captured.complete(mock(Scene.class)); drain();
+        rendered.completeExceptionally(new CompletionException(new RendererException(
+                RenderFailureCode.MEMORY_LIMIT, "compact native renderer failed",
+                new IllegalStateException("private context must not be logged"))));
+        drain();
+        assertEquals(List.of("Renderer memory limit reached. Try again later or ask an administrator."), failures);
+        assertEquals(List.of("Renderer failure phase=render code=MEMORY_LIMIT reason=native-compact"), diagnostics);
     }
 }
