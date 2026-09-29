@@ -1,4 +1,4 @@
-"""Package ONLY the three public examples; no provider, native library, test probe or credentials."""
+"""Package ONLY the four public examples; no provider, native library, test probe or credentials."""
 import argparse
 import hashlib
 import ipaddress
@@ -11,9 +11,10 @@ import zipfile
 
 MODULES=(('postcards','RendererPostcards','postcards'),
          ('redstone-camera','RendererRedstoneCamera','camera'),
-         ('painters-easel','RendererPaintersEasel','easel'))
-RESOURCE_PACK='village-trades-easel-resourcepack.zip'
-RESOURCE_PACK_SHA256='2d9f58a89a8869bfb8d1d64026731023c568ae403d4e31829a5ed247da1a963e'
+         ('painters-easel','RendererPaintersEasel','easel'),
+         ('admin-pov','RendererAdminPov','pov'))
+RESOURCE_PACK='renderer-examples-resourcepack-1.1.0.zip'
+RESOURCE_PACK_SHA256='9fc02186d4cb0ac924e728259371635f14911350482595fa3e5c2edd949ec5cf'
 
 def verify_jar(data,package):
     with zipfile.ZipFile(io.BytesIO(data)) as jar:
@@ -24,7 +25,8 @@ def verify_jar(data,package):
             raise ValueError('Provider dependency must be explicit')
         for name in names:
             if name.endswith('/'): continue
-            allowed=(name=='plugin.yml' or (package=='easel' and name=='config.yml') or name.startswith('META-INF/') or
+            allowed=(name=='plugin.yml' or (package in ('easel','camera','pov') and name=='config.yml')
+                     or (package=='camera' and name=='camera-model.properties') or name.startswith('META-INF/') or
                      (name.startswith('io/github/kernelperson/'+package+'/') and name.endswith('.class')))
             if not allowed or name.lower().endswith(('.dll','.so','.dylib','.key','.pem')):
                 raise ValueError('Unexpected JAR member: '+name)
@@ -41,7 +43,7 @@ def verify_jar(data,package):
                         raise ValueError('Localhost resource-pack URL in default config')
 
 def collect_files(root):
-    files={name:(root/name).read_bytes() for name in ('README.md','LICENSE','docs/acceptance.md')}
+    files={name:(root/name).read_bytes() for name in ('README.md','LICENSE','docs/acceptance.md','docs/release-1.1.0-evidence.md')}
     for module,name,package in MODULES:
         data=(root/module/'target'/(name+'.jar')).read_bytes()
         verify_jar(data,package);files[name+'.jar']=data
@@ -68,7 +70,7 @@ def main():
     def git(*command): return subprocess.check_output(['git',*command],cwd=root,text=True).strip()
     if git('status','--porcelain'): raise SystemExit('Commit reviewed source before packaging')
     files=collect_files(root)
-    manifest={'version':'1.0.0','sourceCommit':git('rev-parse','HEAD'),
+    manifest={'version':'1.1.0','sourceCommit':git('rev-parse','HEAD'),
               'source':'https://github.com/kernel-person/shutterbug-renderer-examples',
               'providerIncluded':False,'testProbeIncluded':False,
               'sha256':{name:hashlib.sha256(data).hexdigest() for name,data in sorted(files.items())}}

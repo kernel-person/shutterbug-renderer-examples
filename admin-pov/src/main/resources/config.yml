@@ -1,0 +1,3 @@
+# Install the optional Renderer Examples resource pack before enabling.
+native-models: false
+# Scheduling/capture limits are deliberately fixed in this small API example.

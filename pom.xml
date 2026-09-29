@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
-  <groupId>io.github.kernelperson</groupId><artifactId>renderer-examples</artifactId><version>1.0.0</version><packaging>pom</packaging>
+  <groupId>io.github.kernelperson</groupId><artifactId>renderer-examples</artifactId><version>1.1.0</version><packaging>pom</packaging>
   <name>ShutterBug Renderer Examples</name>
-  <modules><module>postcards</module><module>redstone-camera</module><module>painters-easel</module></modules>
+  <modules><module>postcards</module><module>redstone-camera</module><module>painters-easel</module><module>admin-pov</module></modules>
   <properties><maven.compiler.release>21</maven.compiler.release><project.build.sourceEncoding>UTF-8</project.build.sourceEncoding><project.build.outputTimestamp>2026-09-27T00:00:00Z</project.build.outputTimestamp></properties>
   <repositories>
     <repository><id>jitpack.io</id><url>https://jitpack.io</url></repository>

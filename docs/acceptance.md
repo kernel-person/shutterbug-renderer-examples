@@ -1,5 +1,19 @@
 # Acceptance checklist
 
+## Examples 1.1.0 — current status (2026-09-29)
+
+The four-example update is separate from the preserved 1.0.0 release below. No commercial Renderer/API, license, marketplace listing or live playtest server was modified.
+
+- Automated Java verification: camera optics/model transform and lifecycle, map-palette linen, old pigment persistence, original examples, POV scheduler bounds/backoff, contextual-map ownership, visibility/access, binding persistence, missing chunks, timeout and obsolete asynchronous callbacks. See the release evidence for the final test count and artifact hashes.
+- Artwork verification: all native references, legal bounds, unit texel density, Blockbench pixel UV/embedded PNG parity, opaque two-unit canvas backing, original PNG preservation and byte-identical double regeneration. Browser previews use actual exports; they are not screenshots from Minecraft.
+- Packaging: four independent JAR inventories, narrow resource allowances, no API/provider/native/probe payloads, exact reviewed pack hash and deterministic ZIP generation. Original 1.0.0 bytes remain preserved.
+- **Pending: isolated licensed Paper acceptance and sustained POV measurements.** The prior temporary acceptance license was revoked after 1.0.0 acceptance. This task does not reuse the human playtest entitlement/cache or change RIC. No new legitimate isolated acceptance entitlement was available to this run, so no fresh native rendering or timing result is claimed.
+- **Pending: actual 26.2 client appearance and interaction.** Check camera aim at steep/diagonal angles, all canvas faces, blank/painted map alignment, brush appearance, monitor placement/removal, two owners plus an unauthorized copied-map viewer, permission loss, visibility changes, teleport/logout, provider reload and restart. Browser/mock checks do not establish these observations.
+
+For a later authorized isolated test, install the exact 1.1.0 JAR/pack hashes and Renderer1.0.0. Run one target for at least five minutes, then two distinct targets for five minutes. Record completed frames, p50/p95 capture-to-delivery latency, stale-image duration, server tick time, backoffs and peak simultaneous work (must remain one). Repeat with multiple owners sharing a target, unloaded boundary chunks, permission removal, target teleport/logout and provider disable/re-enable. Never describe synthetic-clock unit-test cadence as measured renderer throughput. Restart must display blank receivers until a new authorized capture succeeds, with monitor identity restored and no frame history on disk.
+
+Everything below is historical evidence for earlier bytes, **not** acceptance of 1.1.0.
+
 Before distributing example JARs, use an isolated Paper26.2/Java25 server with the exact commercial renderer release. Do not test on a customer's server.
 
 Status on 2026-09-28: a human client playtest accepted the updated experience on the isolated development-overlay server. That is distinct from the historical automated checks below and does not validate the final personalized buyer download, clean commercial JARs, or final examples ZIP. Those exact artifacts still require the release acceptance pass before distribution.

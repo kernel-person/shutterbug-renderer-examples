@@ -15,14 +15,16 @@ import org.bukkit.plugin.java.JavaPlugin;
 import java.io.IOException;
 import java.util.*;
 
-/** A tagged dispenser is the entire camera model and inventory. No private renderer classes. */
+/** A tagged dispenser owns the camera and inventory; optional native displays are cosmetic. */
 public final class RedstoneCameraPlugin extends JavaPlugin implements Listener {
     private final Map<String,CameraTarget> cameras=new HashMap<>();
     private NamespacedKey tag;
     private RenderSession renders;
     private SavedMaps maps;
+    private CameraModel models;
     private boolean sampleScheduled;
     @Override public void onEnable() {
+        saveDefaultConfig();models=new CameraModel(getConfig().getBoolean("native-models",false));
         tag=new NamespacedKey(this,"camera"); maps=new SavedMaps(this); renders=new RenderSession(this);
         try { maps.restore(); }
         catch(IOException failure) { getLogger().severe("Cannot restore saved maps."); getServer().getPluginManager().disablePlugin(this); return; }
@@ -35,7 +37,7 @@ public final class RedstoneCameraPlugin extends JavaPlugin implements Listener {
         if(!player.hasPermission("rendererexamples.camera")) return true;
         int slot=player.getInventory().firstEmpty();
         if(slot<0) { player.sendMessage("Make space first.");return true; }
-        ItemStack item=new ItemStack(Material.DISPENSER);
+        ItemStack item=getConfig().getBoolean("native-models",false)?CameraModel.item(Material.DISPENSER,"redstone_camera"):new ItemStack(Material.DISPENSER);
         var meta=item.getItemMeta();meta.setDisplayName("Redstone Camera");
         meta.getPersistentDataContainer().set(tag,PersistentDataType.STRING,"camera-item");
         item.setItemMeta(meta);player.getInventory().setItem(slot,item);
@@ -48,16 +50,24 @@ public final class RedstoneCameraPlugin extends JavaPlugin implements Listener {
         if(!item.hasItemMeta()||!item.getItemMeta().getPersistentDataContainer().has(tag,PersistentDataType.STRING)) return;
         if(!(event.getBlockPlaced().getState() instanceof Dispenser dispenser)) return;
         if(cameras.size()>=256) { event.setCancelled(true);event.getPlayer().sendMessage("Example camera limit reached (256 loaded cameras).");return; }
-        Directional data=(Directional)dispenser.getBlockData();
-        data.setFacing(event.getPlayer().getFacing()); dispenser.setBlockData(data);
-        String id=UUID.randomUUID().toString();
-        dispenser.getPersistentDataContainer().set(tag,PersistentDataType.STRING,id);
+        Block block=event.getBlockPlaced();var placed=block.getBlockData();
         Location view=event.getPlayer().getEyeLocation();
-        new CameraPose(view.getYaw(),view.getPitch()).save(dispenser);
-        dispenser.update(true,false); remember(dispenser.getBlock(),id);
+        BlockFace face=event.getPlayer().getFacing();
+        // Final protection listeners must finish before identity or transient visuals exist.
+        getServer().getScheduler().runTask(this,()->{
+            if(event.isCancelled()||!event.canBuild()||!block.getWorld().isChunkLoaded(block.getX()>>4,block.getZ()>>4)
+                    ||block.getType()!=Material.DISPENSER||!Objects.equals(placed,block.getBlockData())||cameras.size()>=256)return;
+            if(!(block.getState() instanceof Dispenser current))return;
+            Directional data=(Directional)current.getBlockData();data.setFacing(face);current.setBlockData(data);
+            String id=UUID.randomUUID().toString();current.getPersistentDataContainer().set(tag,PersistentDataType.STRING,id);
+            new CameraPose(view.getYaw(),view.getPitch()).save(current);
+            current.update(true,false);remember(block,id);
+        });
     }
     private void remember(Block block,String id) {
-        cameras.put(id,new CameraTarget(block,id,tag,new PowerEdge(powered(block))));
+        CameraTarget camera=new CameraTarget(block,id,tag,new PowerEdge(powered(block)));
+        cameras.put(id,camera);
+        if(models!=null)try {models.apply(camera);}catch(RuntimeException failure) {getLogger().warning("Camera cosmetic could not be loaded; dispenser remains functional.");}
     }
     private boolean powered(Block block) { return block.isBlockPowered()||block.isBlockIndirectlyPowered(); }
     private void load(Chunk chunk) {
@@ -76,7 +86,7 @@ public final class RedstoneCameraPlugin extends JavaPlugin implements Listener {
                     && camera.block().getX()>>4==event.getChunk().getX()
                     && camera.block().getZ()>>4==event.getChunk().getZ()) remove(camera);
     }
-    private void remove(CameraTarget camera) { cameras.remove(camera.id());renders.invalidate(camera.id()); }
+    private void remove(CameraTarget camera) { cameras.remove(camera.id());renders.invalidate(camera.id());if(models!=null)models.remove(camera.id()); }
     @EventHandler(priority=EventPriority.MONITOR,ignoreCancelled=true)
     public void broken(BlockBreakEvent event) {
         for(CameraTarget camera:List.copyOf(cameras.values())) if(camera.block().equals(event.getBlock())) remove(camera);
@@ -126,5 +136,5 @@ public final class RedstoneCameraPlugin extends JavaPlugin implements Listener {
         if(camera.valid()) camera.block().getWorld().playSound(camera.block().getLocation(),
                 success?Sound.BLOCK_NOTE_BLOCK_PLING:Sound.BLOCK_NOTE_BLOCK_BASS,.5f,success?1.5f:.5f);
     }
-    @Override public void onDisable() { if(renders!=null) renders.close();cameras.clear(); }
+    @Override public void onDisable() { if(renders!=null) renders.close();if(models!=null)models.close();cameras.clear(); }
 }

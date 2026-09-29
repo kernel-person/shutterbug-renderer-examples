@@ -30,8 +30,12 @@ class PackageTests(unittest.TestCase):
         with self.assertRaises(ValueError): module.verify_jar(self.jar(('plugin.yml','duplicate')),'postcards')
     def test_easel_config_is_allowed(self):
         module.verify_jar(self.jar(('config.yml',"model-item: ''\nbrush-model-item: ''\n"),package='easel'),'easel')
+    def test_camera_and_pov_allow_only_their_declared_resources(self):
+        for package in ('camera','pov'):
+            module.verify_jar(self.jar(('config.yml','native-models: false\n'),package=package),package)
+        module.verify_jar(self.jar(('camera-model.properties','body-scale=1.002\n'),package='camera'),'camera')
     def test_other_resources_remain_forbidden(self):
-        for package,path in [('postcards','config.yml'),('camera','config.yml'),('easel','other.yml')]:
+        for package,path in [('postcards','config.yml'),('pov','camera-model.properties'),('easel','other.yml')]:
             with self.subTest(package=package,path=path),self.assertRaises(ValueError):
                 module.verify_jar(self.jar((path,b'not allowed'),package=package),package)
     def test_localhost_default_is_rejected(self):
@@ -48,34 +52,36 @@ class PackageTests(unittest.TestCase):
         (root/'README.md').write_text('Install examples\n')
         (root/'LICENSE').write_text('Apache-2.0\n')
         (root/'docs'/'acceptance.md').write_text('Acceptance\n')
+        (root/'docs'/'release-1.1.0-evidence.md').write_text('Evidence\n')
         for folder,jar_name,package in [('postcards','RendererPostcards','postcards'),
                                         ('redstone-camera','RendererRedstoneCamera','camera'),
-                                        ('painters-easel','RendererPaintersEasel','easel')]:
+                                        ('painters-easel','RendererPaintersEasel','easel'),
+                                        ('admin-pov','RendererAdminPov','pov')]:
             target=root/folder/'target'
             target.mkdir(parents=True)
             (target/(jar_name+'.jar')).write_bytes(self.jar(package=package))
-        pack_source=Path(__file__).resolve().parents[1]/'resourcepacks'/'village-trades-easel-resourcepack.zip'
+        pack_source=Path(__file__).resolve().parents[1]/'resourcepacks'/module.RESOURCE_PACK
         self.assertTrue(pack_source.is_file(),'the distributable pack must be checked into the examples repository')
         pack=pack_source.read_bytes()
         (root/'resourcepacks').mkdir()
-        (root/'resourcepacks'/'village-trades-easel-resourcepack.zip').write_bytes(pack)
+        (root/'resourcepacks'/module.RESOURCE_PACK).write_bytes(pack)
         return pack
     def test_bundle_contains_byte_exact_easel_and_brush_pack(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory)
             pack=self.make_package_root(root)
-            self.assertEqual('2d9f58a89a8869bfb8d1d64026731023c568ae403d4e31829a5ed247da1a963e',
+            self.assertEqual(module.RESOURCE_PACK_SHA256,
                              hashlib.sha256(pack).hexdigest())
             files=module.collect_files(root)
-            self.assertEqual({'README.md','LICENSE','docs/acceptance.md',
-                              'RendererPostcards.jar','RendererRedstoneCamera.jar','RendererPaintersEasel.jar',
-                              'village-trades-easel-resourcepack.zip'},set(files))
-            self.assertEqual(pack,files['village-trades-easel-resourcepack.zip'])
+            self.assertEqual({'README.md','LICENSE','docs/acceptance.md','docs/release-1.1.0-evidence.md',
+                              'RendererPostcards.jar','RendererRedstoneCamera.jar','RendererPaintersEasel.jar','RendererAdminPov.jar',
+                              module.RESOURCE_PACK},set(files))
+            self.assertEqual(pack,files[module.RESOURCE_PACK])
     def test_mutated_resource_pack_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory)
             self.make_package_root(root)
-            pack=root/'resourcepacks'/'village-trades-easel-resourcepack.zip'
+            pack=root/'resourcepacks'/module.RESOURCE_PACK
             pack.write_bytes(pack.read_bytes()+b'changed')
             with self.assertRaises(ValueError): module.collect_files(root)
     def test_zip_output_is_reproducible(self):

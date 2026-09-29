@@ -35,6 +35,8 @@ class CameraPoseTest {
                 double extent=Math.max(Math.abs(delta.getX()),Math.max(Math.abs(delta.getY()),Math.abs(delta.getZ())));
                 assertTrue(extent>.5,"lens outside block at "+yaw+", "+pitch);
                 var expected=new Location(null,0,0,0,yaw,pitch).getDirection();
+                double max=Math.max(Math.abs(expected.getX()),Math.max(Math.abs(expected.getY()),Math.abs(expected.getZ())));
+                assertEquals(.5323125/max+.015+.25+.05,delta.length(),1e-9,"capture clears body, socket and complete lens");
                 assertTrue(delta.normalize().distance(expected)<1e-9);
                 assertEquals(-8,block.getX(),"caller location is not mutated");
             }

@@ -1,0 +1,18 @@
+{
+  "name": "renderer-examples-artwork",
+  "version": "1.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "generate": "python3 tools/generate.py",
+    "validate": "python3 -m unittest discover -s tools -p 'test_*.py'"
+  },
+  "dependencies": {
+    "three": "0.180.0"
+  },
+  "devDependencies": {
+    "vite": "7.1.7"
+  }
+}

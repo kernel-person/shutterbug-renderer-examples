@@ -1,0 +1,81 @@
+{
+  "schema": 1,
+  "item_id": "village_trades:painters_easel",
+  "units_per_block": 16,
+  "height_model_units": 32,
+  "ground_anchor_model_units": [
+    8,
+    0,
+    8
+  ],
+  "canvas": {
+    "min": [
+      0,
+      16,
+      10
+    ],
+    "max": [
+      16,
+      32,
+      10
+    ],
+    "center": [
+      8,
+      24,
+      10
+    ],
+    "size_model_units": [
+      16,
+      16
+    ],
+    "front_normal": [
+      0,
+      0,
+      1
+    ],
+    "image_right": [
+      1,
+      0,
+      0
+    ],
+    "image_up": [
+      0,
+      1,
+      0
+    ],
+    "backing_max_z": 9.9375,
+    "backing_gap_model_units": 0.0625,
+    "exported": false,
+    "provided_by": "plugin live map",
+    "backing_min_z": 7.9375,
+    "backing_thickness_model_units": 2
+  },
+  "placement": {
+    "item_display_context": "fixed",
+    "fixed_is_identity": true,
+    "entity_offset_from_ground_blocks": [
+      0,
+      0.5,
+      0
+    ],
+    "south_facing_entity_yaw_degrees": 180,
+    "entity_pitch_degrees": 0,
+    "entity_scale": [
+      1,
+      1,
+      1
+    ],
+    "billboard": "fixed",
+    "canvas_center_from_ground_south_blocks": [
+      0,
+      1.5,
+      0.125
+    ],
+    "south_front_normal": [
+      0,
+      0,
+      1
+    ],
+    "note": "ItemDisplay renderer adds Y180; entity yaw desired front yaw+180 cancels it. Align the live map visible plane separately."
+  }
+}

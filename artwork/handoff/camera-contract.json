@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "units_per_block": 16,
+  "body_half_extent_blocks": 0.5323125,
+  "body_scale": 1.002,
+  "lens_socket_gap_blocks": 0.015,
+  "lens_front_blocks": 0.25,
+  "capture_clearance_blocks": 0.05,
+  "raw_front": [
+    0,
+    0,
+    1
+  ],
+  "body_item": "village_trades:redstone_camera_body",
+  "lens_item": "village_trades:redstone_camera_lens",
+  "placement": "Body at block center, fixed world axes. Lens center = center + direction*(body_half_extent/max(abs(direction)) + socket_gap). Capture = lens center + direction*(lens_front + clearance). Native ItemDisplay Y180 is cancelled before applying the aim quaternion."
+}

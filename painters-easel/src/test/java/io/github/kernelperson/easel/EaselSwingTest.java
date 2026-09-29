@@ -22,7 +22,11 @@ class EaselSwingTest {
         var updates=inOrder(f.maps,f.player);
         updates.verify(f.maps).update(eq(7),any(byte[].class));
         updates.verify(f.player).sendMap(f.view);
-        double first=f.canvas.progress(); f.swing();
+        double first=f.canvas.progress();
+        // Mockito verification and first palette conversion can exceed 100ms on slow hosts.
+        // Freeze the debounce window instead of depending on test-machine speed.
+        EaselProtectionTest.set(f.easel,"lastStroke",System.nanoTime()+1_000_000_000L);
+        f.swing();
         assertEquals(first,f.canvas.progress(),"duplicate swing packets do not double-paint");
         verify(f.player,times(1)).sendMap(f.view);
     }
