@@ -1,0 +1,550 @@
+{
+  "credit": "Original Heirloom paintbrush; tools/paintbrush.py and editable art/paintbrush.png",
+  "texture_size": [
+    64,
+    64
+  ],
+  "ambientocclusion": false,
+  "gui_light": "side",
+  "textures": {
+    "art": "village_trades:item/paintbrush",
+    "particle": "village_trades:item/paintbrush"
+  },
+  "elements": [
+    {
+      "name": "wood_handle_butt",
+      "from": [
+        6.5,
+        0,
+        6.5
+      ],
+      "to": [
+        9.5,
+        2,
+        9.5
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0.25,
+            0.25,
+            1.0,
+            0.75
+          ],
+          "texture": "#art"
+        },
+        "south": {
+          "uv": [
+            1.25,
+            0.25,
+            2.0,
+            0.75
+          ],
+          "texture": "#art"
+        },
+        "east": {
+          "uv": [
+            2.25,
+            0.25,
+            3.0,
+            0.75
+          ],
+          "texture": "#art"
+        },
+        "west": {
+          "uv": [
+            3.25,
+            0.25,
+            4.0,
+            0.75
+          ],
+          "texture": "#art"
+        },
+        "up": {
+          "uv": [
+            4.25,
+            0.25,
+            5.0,
+            1.0
+          ],
+          "texture": "#art"
+        },
+        "down": {
+          "uv": [
+            5.25,
+            0.25,
+            6.0,
+            1.0
+          ],
+          "texture": "#art"
+        }
+      }
+    },
+    {
+      "name": "wood_handle",
+      "from": [
+        7,
+        2,
+        7
+      ],
+      "to": [
+        9,
+        10,
+        9
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            6.25,
+            0.25,
+            6.75,
+            2.25
+          ],
+          "texture": "#art"
+        },
+        "south": {
+          "uv": [
+            7.0,
+            0.25,
+            7.5,
+            2.25
+          ],
+          "texture": "#art"
+        },
+        "east": {
+          "uv": [
+            7.75,
+            0.25,
+            8.25,
+            2.25
+          ],
+          "texture": "#art"
+        },
+        "west": {
+          "uv": [
+            8.5,
+            0.25,
+            9.0,
+            2.25
+          ],
+          "texture": "#art"
+        },
+        "up": {
+          "uv": [
+            9.25,
+            0.25,
+            9.75,
+            0.75
+          ],
+          "texture": "#art"
+        },
+        "down": {
+          "uv": [
+            10.0,
+            0.25,
+            10.5,
+            0.75
+          ],
+          "texture": "#art"
+        }
+      }
+    },
+    {
+      "name": "wood_handle_neck",
+      "from": [
+        6.5,
+        10,
+        7
+      ],
+      "to": [
+        9.5,
+        12,
+        9
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            10.75,
+            0.25,
+            11.5,
+            0.75
+          ],
+          "texture": "#art"
+        },
+        "south": {
+          "uv": [
+            11.75,
+            0.25,
+            12.5,
+            0.75
+          ],
+          "texture": "#art"
+        },
+        "east": {
+          "uv": [
+            12.75,
+            0.25,
+            13.25,
+            0.75
+          ],
+          "texture": "#art"
+        },
+        "west": {
+          "uv": [
+            13.5,
+            0.25,
+            14.0,
+            0.75
+          ],
+          "texture": "#art"
+        },
+        "up": {
+          "uv": [
+            14.25,
+            0.25,
+            15.0,
+            0.75
+          ],
+          "texture": "#art"
+        },
+        "down": {
+          "uv": [
+            0.25,
+            2.5,
+            1.0,
+            3.0
+          ],
+          "texture": "#art"
+        }
+      }
+    },
+    {
+      "name": "iron_ferrule",
+      "from": [
+        6,
+        12,
+        6.5
+      ],
+      "to": [
+        10,
+        15,
+        9.5
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            1.25,
+            2.5,
+            2.25,
+            3.25
+          ],
+          "texture": "#art"
+        },
+        "south": {
+          "uv": [
+            2.5,
+            2.5,
+            3.5,
+            3.25
+          ],
+          "texture": "#art"
+        },
+        "east": {
+          "uv": [
+            3.75,
+            2.5,
+            4.5,
+            3.25
+          ],
+          "texture": "#art"
+        },
+        "west": {
+          "uv": [
+            4.75,
+            2.5,
+            5.5,
+            3.25
+          ],
+          "texture": "#art"
+        },
+        "up": {
+          "uv": [
+            5.75,
+            2.5,
+            6.75,
+            3.25
+          ],
+          "texture": "#art"
+        },
+        "down": {
+          "uv": [
+            7.0,
+            2.5,
+            8.0,
+            3.25
+          ],
+          "texture": "#art"
+        }
+      }
+    },
+    {
+      "name": "bristles",
+      "from": [
+        5.5,
+        15,
+        6.5
+      ],
+      "to": [
+        10.5,
+        19,
+        9.5
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            8.25,
+            2.5,
+            9.5,
+            3.5
+          ],
+          "texture": "#art"
+        },
+        "south": {
+          "uv": [
+            9.75,
+            2.5,
+            11.0,
+            3.5
+          ],
+          "texture": "#art"
+        },
+        "east": {
+          "uv": [
+            11.25,
+            2.5,
+            12.0,
+            3.5
+          ],
+          "texture": "#art"
+        },
+        "west": {
+          "uv": [
+            12.25,
+            2.5,
+            13.0,
+            3.5
+          ],
+          "texture": "#art"
+        },
+        "up": {
+          "uv": [
+            13.25,
+            2.5,
+            14.5,
+            3.25
+          ],
+          "texture": "#art"
+        },
+        "down": {
+          "uv": [
+            0.25,
+            3.75,
+            1.5,
+            4.5
+          ],
+          "texture": "#art"
+        }
+      }
+    },
+    {
+      "name": "bristle_tip",
+      "from": [
+        6.5,
+        19,
+        6.5
+      ],
+      "to": [
+        9.5,
+        20,
+        9.5
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            1.75,
+            3.75,
+            2.5,
+            4.0
+          ],
+          "texture": "#art"
+        },
+        "south": {
+          "uv": [
+            2.75,
+            3.75,
+            3.5,
+            4.0
+          ],
+          "texture": "#art"
+        },
+        "east": {
+          "uv": [
+            3.75,
+            3.75,
+            4.5,
+            4.0
+          ],
+          "texture": "#art"
+        },
+        "west": {
+          "uv": [
+            4.75,
+            3.75,
+            5.5,
+            4.0
+          ],
+          "texture": "#art"
+        },
+        "up": {
+          "uv": [
+            5.75,
+            3.75,
+            6.5,
+            4.5
+          ],
+          "texture": "#art"
+        },
+        "down": {
+          "uv": [
+            6.75,
+            3.75,
+            7.5,
+            4.5
+          ],
+          "texture": "#art"
+        }
+      }
+    }
+  ],
+  "display": {
+    "fixed": {
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    "gui": {
+      "rotation": [
+        0,
+        -22.5,
+        -35
+      ],
+      "translation": [
+        0,
+        -1,
+        0
+      ],
+      "scale": [
+        0.72,
+        0.72,
+        0.72
+      ]
+    },
+    "ground": {
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        0,
+        3,
+        0
+      ],
+      "scale": [
+        0.5,
+        0.5,
+        0.5
+      ]
+    },
+    "firstperson_righthand": {
+      "rotation": [
+        0,
+        -90,
+        12
+      ],
+      "translation": [
+        1.13,
+        3.2,
+        1.13
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ]
+    },
+    "firstperson_lefthand": {
+      "rotation": [
+        0,
+        90,
+        -12
+      ],
+      "translation": [
+        1.13,
+        3.2,
+        1.13
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ]
+    },
+    "thirdperson_righthand": {
+      "rotation": [
+        0,
+        90,
+        0
+      ],
+      "translation": [
+        0,
+        3,
+        1
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ]
+    },
+    "thirdperson_lefthand": {
+      "rotation": [
+        0,
+        -90,
+        0
+      ],
+      "translation": [
+        0,
+        3,
+        1
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ]
+    }
+  }
+}

@@ -4,3 +4,5 @@
 .DS_Store
 .superpowers/
 __pycache__/
+artwork/node_modules/
+artwork/dist/

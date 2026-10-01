@@ -1,0 +1,16 @@
+{
+  "item_id": "village_trades:paintbrush",
+  "model_id": "village_trades:item/paintbrush",
+  "role": "finished painting tool artwork",
+  "raw_grip": [
+    8,
+    5.5,
+    8
+  ],
+  "raw_height_units": 20,
+  "source_png": "art/paintbrush.png",
+  "blockbench": "blockbench/paintbrush.bbmodel",
+  "provider_assignment": "pending_integration",
+  "gameplay_implemented": false,
+  "colour_note": "Static blue paint is decorative; plugin painting colour remains independent."
+}

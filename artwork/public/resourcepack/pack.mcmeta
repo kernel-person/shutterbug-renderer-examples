@@ -1,0 +1,13 @@
+{
+  "pack": {
+    "min_format": [
+      88,
+      0
+    ],
+    "max_format": [
+      88,
+      0
+    ],
+    "description": "Kernel Person — Renderer Examples 1.1.0: easel, brush, camera and POV monitor"
+  }
+}

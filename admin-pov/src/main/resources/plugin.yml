@@ -1,0 +1,13 @@
+name: RendererAdminPov
+version: 1.1.1
+main: io.github.kernelperson.pov.AdminPovPlugin
+api-version: '1.21'
+depend: [ShutterBugRenderer]
+description: Owner-only periodic rendered viewpoints, not screen sharing or recording.
+commands:
+  pov:
+    description: /pov <player>, /pov stop, /pov monitor
+    permission: rendererexamples.pov
+permissions:
+  rendererexamples.pov:
+    default: op

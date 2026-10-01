@@ -1,0 +1,9 @@
+<!doctype html><html lang="en"><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Renderer Examples — Native Artwork</title>
+<style>body{margin:0;background:#1c2427;color:#eee6d9;font:15px system-ui}header{padding:18px 24px;background:#2c3434}h1{font-size:21px;margin:0 0 8px}select,button{padding:8px;margin:4px;background:#424a46;color:#fff;border:1px solid #7b857a;border-radius:5px}#stage{height:68vh}#inventory{position:absolute;right:25px;top:190px;background:#777;border:5px solid #333;image-rendering:pixelated}footer{padding:18px 24px;max-width:1000px;line-height:1.6}#error{color:#ffb7ad;white-space:pre-wrap}</style>
+<header><h1>Renderer Examples 1.1.0 · exported native geometry</h1>
+<select id="asset"><option value="redstone_camera">Redstone camera</option><option value="painters_easel">Painter’s easel</option><option value="pov_monitor">Admin POV monitor</option><option value="paintbrush">Brush (preserved)</option></select>
+<button data-view="oblique">Oblique</button><button data-view="front">Front</button><button data-view="back">Back</button><button data-view="side">Side</button><button id="light">Day / dim</button>
+<span id="status"></span></header><div id="stage"></div><canvas id="inventory" width="64" height="64"></canvas>
+<footer>Drag to orbit · scroll to zoom. Grid spacing = 16 model units (one block). Inventory thumbnail uses the exported GUI transform. The cream easel surface and dark monitor surface are physical backing; live map content is supplied by Java, never baked into these models. Browser lighting and placement are approximations, not Minecraft client acceptance.<div id="error"></div></footer>
+<script type="module" src="/src/main.js"></script></html>

@@ -2,20 +2,21 @@
 
 By Kernel Person.
 
-Three independent, small plugins built **only** against the public Renderer API. Start with Postcards: its command handler is the shortest capture → render → Minecraft map example.
+Four independent plugins, examples version **1.1.1**, built **only** against public Renderer API **v1.0.1**. They use the unchanged commercial Renderer **1.0.0**. Start with Postcards: its command handler is the shortest capture → render → Minecraft map example.
 
 | Plugin | Try it | Demonstrates |
 | --- | --- | --- |
 | RendererPostcards | `/postcard` | Capture your view, submit a render, convert it to a persistent map |
 | RendererRedstoneCamera | `/rendercamera` | A placed dispenser camera, rising-edge redstone, bounded asynchronous work |
 | RendererPaintersEasel | `/easel` | Raw rendered pixels, game-like CMY painting, canvas hit coordinates and saved progress |
+| RendererAdminPov | `/pov <player>` | Bounded periodic capture, shared target feeds and private contextual map screens |
 
 ## Install
 
 1. Run the tested server combination: **Java 25, Paper 26.2, Minecraft 26.2**.
 2. Install and activate **ShutterBug Renderer**, purchased separately. These examples do not include its commercial JAR, native libraries or a license key.
-3. Copy any of the three example JARs from this repository's build output or the examples ZIP into `plugins/` and restart. Each is independent; no shared support plugin is required.
-4. Stand in an already loaded area. Examples capture a 32-block radius; they do not generate or preload distant chunks.
+3. Copy any of the four example JARs from this repository's build output or the examples ZIP into `plugins/` and restart. Each is independent; no shared support plugin is required.
+4. Stand in an already loaded area. The original examples capture a 32-block radius; Admin POV uses 16. None generates or preloads distant chunks.
 
 Renderer platforms: **macOS ARM64 and Linux x86-64**. Windows is coming soon and is not supported by this release. Java 21 is the SDK/source compilation baseline, not the server runtime requirement.
 
@@ -35,11 +36,13 @@ Read [PostcardsPlugin.java](postcards/src/main/java/io/github/kernelperson/postc
 
 As an operator, run `/rendercamera` and place the dispenser while looking in the direction you want to photograph. Placement stores your exact yaw and up/down pitch, independently of the dispenser's blocky appearance. Break and place a new camera to change its aim. Pulse adjacent redstone, then open the dispenser to find the map. Continuous power takes one picture, not a stream.
 
-The camera suppresses ordinary dispensing, needs an empty inventory slot, ignores triggers while busy/cooling down and does not consume materials. A high pling means success; a low tone means busy, full or failed. Break it to remove it; obtain another tagged camera with the command. An ordinary dispenser is never treated as a camera.
+The camera suppresses ordinary dispensing, needs an empty inventory slot, ignores triggers while busy/cooling down and does not consume materials. An accepted request emits one brief white flash just outside the lens, with or without the resource pack. Enable client particles to see it. The flash signals capture started, not successful completion; it does not illuminate nearby blocks. A high pling means success; a low tone means busy, full or failed. Break it to remove it; obtain another tagged camera with the command. An ordinary dispenser is never treated as a camera.
 
 Permission `rendererexamples.camera` defaults to operators. Locations and random instance identities persist in dispenser data. An unloaded, broken or replaced camera cannot receive an old result. The teaching example limits itself to 256 loaded cameras and eight concurrent renders.
 
 Read [RedstoneCameraPlugin.java](redstone-camera/src/main/java/io/github/kernelperson/camera/RedstoneCameraPlugin.java).
+
+With the optional 1.1.0 resource pack, set `native-models: true` in `plugins/RendererRedstoneCamera/config.yml` and restart. The wood/metal housing stays on the dispenser; its lens follows the exact stored yaw/pitch. Both are cosmetic native ItemDisplays. The capture point clears the housing, lens and dispenser at every angle. Inventory, redstone and saved camera identity are unchanged. Ordinary dispensers are not retextured.
 
 ### Painter's Easel
 
@@ -58,15 +61,36 @@ Permission `rendererexamples.easel` defaults to operators. Limit: 128 loaded eas
 
 Optional native easel and brush models (no Nexo or other plugin dependency):
 
-1. Host the [canonical, playtested source pack](https://raw.githubusercontent.com/kernel-person/shutterbug-renderer-examples/2baab5d1b9488a43d85456e6b6c73446ed626eb2/resourcepacks/village-trades-easel-resourcepack.zip) at an HTTPS URL reachable by players, not a localhost URL. Its SHA-1 for the server pack setting is `c8e0b7506490ba0ff9a945dee127ab57befbd32a` for those exact ZIP bytes only. If instead you host `village-trades-easel-resourcepack.zip` extracted from your MCModels examples download, compute the SHA-1 of the exact file you serve (`shasum -a 1 village-trades-easel-resourcepack.zip` on macOS or `sha1sum village-trades-easel-resourcepack.zip` on Linux); marketplace repacking changes ZIP bytes, so do not reuse the source-pack hash. Configure your server to offer the chosen pack.
+1. Use the included **renderer-examples-resourcepack-1.1.0.zip**. Host it at an HTTPS URL reachable by players, not localhost, and set your server's `resource-pack` URL. Compute `resource-pack-sha1` from the exact ZIP you serve (`shasum -a 1 renderer-examples-resourcepack-1.1.0.zip` on macOS, `sha1sum` on Linux). Players must accept the pack. This revised pack includes the camera, opaque linen canvas backing, monitor and original brush; the old 1.0.0 pack is preserved separately and lacks these additions.
 2. Start the server once to create `plugins/RendererPaintersEasel/config.yml`. Set `model-item: village_trades:painters_easel` and `brush-model-item: village_trades:paintbrush` there, then restart. Players must accept the pack to see the models.
 3. Use `/easel` to issue the easel and brush. Existing tagged brushes gain the brush model when their owner joins; ordinary tools stay unchanged. The blue tip is cosmetic—offhand dye still chooses the painting colour.
 
 The pack targets Minecraft 26.2, not every version supported by the Java API. The adapter replaces the fence/backboard with two invisible barrier blocks and displays the wood separately from the live map. Existing easels keep their map IDs, ownership and pigment progress. Leaving `model-item` blank restores vanilla supports on loaded easels; `/easel remove` removes the model and owned supports. Transient displays are recreated from saved frames after restart and removed on chunk unload.
 
+The canvas backing is two model units thick, with opaque cream linen on its rear and edges. It stays behind the existing map plane, including a blank map. The map's initial ground now has palette-visible warm weave; applied pigment amounts and the `.cmy` save format are unchanged. Fully painted pixels still converge to the original target colour.
+
 If a saved canvas is damaged, or more than 128 easels are loaded from existing chunks, affected easels stay protected but inactive. For a damaged canvas, stop the server, restore `canvases/<frame UUID>.cmy` from a backup and restart; the console identifies that UUID. For excess easels, unload other easel chunks, then reload the affected chunk. The plugin never silently discards a damaged painting or permits another player to take it.
 
 Read [PigmentCanvas.java](painters-easel/src/main/java/io/github/kernelperson/easel/PigmentCanvas.java), [CanvasHit.java](painters-easel/src/main/java/io/github/kernelperson/easel/CanvasHit.java) and [PaintersEaselPlugin.java](painters-easel/src/main/java/io/github/kernelperson/easel/PaintersEaselPlugin.java).
+
+### Admin POV Monitor
+
+Permission `rendererexamples.pov` defaults to **OP**. This is an administration example, not public surveillance access.
+
+1. `/pov <online-player>` selects a player you can see and supplies a reusable handheld map. Hold it in either hand to watch. Running the command again changes your selected target without creating a new map ID.
+2. `/pov monitor` supplies a placeable desk monitor linked to your selection. Leave two blocks of height and space in front; supports and screen must fit within one chunk. Placement fires normal block/hanging protection events. Sneak + right-click your screen to remove it, with an empty inventory slot.
+3. Enable `native-models: true` in `plugins/RendererAdminPov/config.yml` after installing the pack, then restart. Without the pack setting, the same private live map uses vanilla supports. The optional model does not contain a baked image.
+4. `/pov stop` blanks your receivers and removes demand for your feed. Monitors stay placed for later use.
+
+Recording alone? `/pov YourExactPlayerName` can select yourself. Hold the map in your offhand and slowly pan between scenes, or watch your own desk monitor. Label the clip as a **solo self-view demo**, not another player's view. See the [recording walkthrough](docs/recording-guide.md) for easel, camera/photo pickup, POV and Postcards shot lists.
+
+The target's server-side eye position and exact yaw/pitch are captured. This is **rendered world-view sampling, not screen sharing**: no HUD, chat, inventory UI, client shaders or audio. It does not record frames or store a history. Administrators can still take their own screenshots; this plugin cannot erase images a client has already received.
+
+Only the owning authorized admin gets image pixels. Other players see a blank contextual map, even if they copy/drop/pick up the receiver or approach someone else's monitor. Access and target visibility are checked again at delivery. Permission loss, stopping, logout, target disappearance, teleport/world changes and provider reload invalidate applicable work or images. After a server restart the screen is blank until authorization and a fresh capture succeed.
+
+Capture runs only while an authorized owner holds a receiver, or looks toward their loaded monitor within 16 blocks with line of sight. Same-target subscribers share a completed frame. Maximum: **two active targets and one capture/render pipeline globally**; there is no frame queue. Render settings are 128×128 CLASSIC, radius 16, two capture chunks per tick, one native worker, unchanged provider memory limits and a 30-second deadline. A one-second interval is a target, not a latency guarantee: slow work skips intervals; failures back off from 2 to at most 30 seconds. Images older than three seconds are labelled **STALE**; a blank authorized receiver says **NO FEED**. Unloaded nearby chunks are rejected, never generated or loaded synchronously.
+
+Only ownership, map IDs and selected targets are stored in `bindings.yml`; monitor ownership lives in ItemFrame data. Back these up with world map/entity data. Maximum 128 receiver owners and 128 active loaded monitors. Excess restored monitors stay protected with empty frames and do not request renders; unload other monitors, then reload their chunk to reactivate them. If several idle owners later demand more than two distinct targets, the first two targets in saved owner order are admitted; other receivers wait until demand frees a slot. See [AdminPovPlugin.java](admin-pov/src/main/java/io/github/kernelperson/pov/AdminPovPlugin.java), [FeedLoop.java](admin-pov/src/main/java/io/github/kernelperson/pov/FeedLoop.java) and [PrivateMap.java](admin-pov/src/main/java/io/github/kernelperson/pov/PrivateMap.java).
 
 ## Build and adapt
 
@@ -105,4 +129,4 @@ Distribute your add-on, not the commercial Renderer provider, native binaries or
 
 Unit tests and builds are reproducible with `mvn clean verify`. Runtime acceptance and remaining manual visual checks are recorded in [docs/acceptance.md](docs/acceptance.md); do not mistake automated geometry/event checks for an actual human painting playtest.
 
-Release packaging: after committing reviewed source, run `python3 tools/package_examples.py --output target/ShutterBug-Renderer-Examples-1.0.0.zip`. It validates the three JAR inventories and the byte-exact easel/brush pack, then records source/artifact hashes. The ZIP contains only the three plugin JARs, the resource pack, README, license, acceptance notes and manifest; the test-only acceptance probe is never included.
+Release packaging: after committing reviewed source, run `python3 tools/package_examples.py --output target/ShutterBug-Renderer-Examples-1.1.1.zip`. It validates four JAR inventories and the reviewed resource-pack bytes, then records source/artifact hashes. The ZIP contains four plugin JARs, the unchanged 1.1.0 pack, README, recording guide, license, acceptance notes and manifest. No commercial provider, keys or test probe are included. Existing 1.0.0 and 1.1.0 downloads are not replaced. Editable artwork and regeneration instructions are in [artwork/README.md](artwork/README.md).

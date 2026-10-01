@@ -32,10 +32,13 @@ final class PigmentCanvas {
         int at=(y*128+x)*3, need=0, have=0;
         for(int c=0;c<3;c++) {need+=needed[at+c]&255;have+=applied[at+c]&255;}
         double completion=need==0?1:(double)have/need;
-        int paper=246+Math.floorMod(x*37+y*17,7);
-        int base=(int)Math.round(paper+(255-paper)*completion);
-        int r=Math.max(0,base-(applied[at]&255)), g=Math.max(0,base-(applied[at+1]&255)), b=Math.max(0,base-(applied[at+2]&255));
-        return (r<<16)|(g<<8)|b;
+        int paper=CanvasLinen.rgb(x,y),rgb=0;
+        for(int c=0;c<3;c++) {
+            int channel=(paper>>((2-c)*8))&255;
+            int base=(int)Math.round(channel+(255-channel)*completion);
+            rgb|=Math.max(0,base-(applied[at+c]&255))<<((2-c)*8);
+        }
+        return rgb;
     }
     double progress() {
         long need=0,have=0;

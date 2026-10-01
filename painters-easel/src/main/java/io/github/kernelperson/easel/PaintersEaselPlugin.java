@@ -324,7 +324,7 @@ public final class PaintersEaselPlugin extends JavaPlugin implements Listener {
     public void retract(BlockPistonRetractEvent event) {if(event.getBlocks().stream().anyMatch(this::protectedBlock)) event.setCancelled(true);}
     private static byte[] blank() {
         byte[] pixels=new byte[16384];for(int y=0;y<128;y++) for(int x=0;x<128;x++) {
-            int shade=246+Math.floorMod(x*37+y*17,7);pixels[y*128+x]=color((shade<<16)|(shade<<8)|shade);
+            pixels[y*128+x]=color(CanvasLinen.rgb(x,y));
         }return pixels;
     }
     private static byte[] palette(PigmentCanvas canvas) {

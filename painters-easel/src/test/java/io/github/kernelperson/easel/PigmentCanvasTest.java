@@ -19,7 +19,7 @@ class PigmentCanvasTest {
         assertEquals(0,(cyan>>16)&255); assertTrue((cyan&255)>200);
         for(int n=0;n<4;n++) canvas.stroke(64,64,8,2);
         assertEquals(0x00ff00,canvas.rgb(64,64));
-        assertEquals(0xf6f6f6,canvas.rgb(0,0));
+        assertEquals(CanvasLinen.rgb(0,0),canvas.rgb(0,0));
         double progress=canvas.progress();
         for(int n=0;n<4;n++) {canvas.stroke(64,64,1,0); canvas.stroke(64,64,1,2);}
         assertEquals(0x00ff00,canvas.rgb(64,64));

@@ -29,11 +29,15 @@ record CameraPose(float yaw,float pitch) {
         return new CameraPose(facing.getYaw(),facing.getPitch());
     }
     static Location lens(Location block,float yaw,float pitch) {
+        Location lens=socket(block,yaw,pitch);
+        return lens.add(lens.getDirection().multiply(CameraModelContract.LENS_FRONT+CameraModelContract.CLEARANCE));
+    }
+    static Location socket(Location block,float yaw,float pitch) {
         new CameraPose(yaw,pitch); // validate before constructing a render request
         Location lens=block.clone().add(.5,.5,.5);
         lens.setYaw(yaw);lens.setPitch(pitch);
         var direction=lens.getDirection();
         double extent=Math.max(Math.abs(direction.getX()),Math.max(Math.abs(direction.getY()),Math.abs(direction.getZ())));
-        return lens.add(direction.multiply(.5/extent+.05));
+        return lens.add(direction.multiply(CameraModelContract.BODY_HALF_EXTENT/extent+CameraModelContract.SOCKET_GAP));
     }
 }

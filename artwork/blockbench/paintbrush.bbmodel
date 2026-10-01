@@ -1,0 +1,734 @@
+{
+  "meta": {
+    "format_version": "5.0",
+    "model_format": "java_block",
+    "box_uv": false
+  },
+  "name": "Painter’s Brush",
+  "model_identifier": "village_trades:item/paintbrush",
+  "resolution": {
+    "width": 64,
+    "height": 64
+  },
+  "front_gui_light": false,
+  "ambientocclusion": false,
+  "elements": [
+    {
+      "name": "wood_handle_butt",
+      "type": "cube",
+      "uuid": "43cc7d1b-6cee-5836-b262-8231ed504f7b",
+      "from": [
+        6.5,
+        0,
+        6.5
+      ],
+      "to": [
+        9.5,
+        2,
+        9.5
+      ],
+      "origin": [
+        8,
+        8,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "autouv": 0,
+      "box_uv": false,
+      "color": 0,
+      "faces": {
+        "north": {
+          "uv": [
+            1.0,
+            1.0,
+            4.0,
+            3.0
+          ],
+          "texture": "484c6c48-2aac-59cc-8669-1c04d12a409c"
+        },
+        "south": {
+          "uv": [
+            5.0,
+            1.0,
+            8.0,
+            3.0
+          ],
+          "texture": "484c6c48-2aac-59cc-8669-1c04d12a409c"
+        },
+        "east": {
+          "uv": [
+            9.0,
+            1.0,
+            12.0,
+            3.0
+          ],
+          "texture": "484c6c48-2aac-59cc-8669-1c04d12a409c"
+        },
+        "west": {
+          "uv": [
+            13.0,
+            1.0,
+            16.0,
+            3.0
+          ],
+          "texture": "484c6c48-2aac-59cc-8669-1c04d12a409c"
+        },
+        "up": {
+          "uv": [
+            17.0,
+            1.0,
+            20.0,
+            4.0
+          ],
+          "texture": "484c6c48-2aac-59cc-8669-1c04d12a409c"
+        },
+        "down": {
+          "uv": [
+            21.0,
+            1.0,
+            24.0,
+            4.0
+          ],
+          "texture": "484c6c48-2aac-59cc-8669-1c04d12a409c"
+        }
+      }
+    },
+    {
+      "name": "wood_handle",
+      "type": "cube",
+      "uuid": "b753689c-a007-5907-9e7c-ae369f1a63bf",
+      "from": [
+        7,
+        2,
+        7
+      ],
+      "to": [
+        9,
+        10,
+        9
+      ],
+      "origin": [
+        8,
+        8,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "autouv": 0,
+      "box_uv": false,
+      "color": 0,
+      "faces": {
+        "north": {
+          "uv": [
+            25.0,
+            1.0,
+            27.0,
+            9.0
+          ],
+          "texture": "484c6c48-2aac-59cc-8669-1c04d12a409c"
+        },
+        "south": {
+          "uv": [
+            28.0,
+            1.0,
+            30.0,
+            9.0
+          ],
+          "texture": "484c6c48-2aac-59cc-8669-1c04d12a409c"
+        },
+        "east": {
+          "uv": [
+            31.0,
+            1.0,
+            33.0,
+            9.0
+          ],
+          "texture": "484c6c48-2aac-59cc-8669-1c04d12a409c"
+        },
+        "west": {
+          "uv": [
+            34.0,
+            1.0,
+            36.0,
+            9.0
+          ],
+          "texture": "484c6c48-2aac-59cc-8669-1c04d12a409c"
+        },
+        "up": {
+          "uv": [
+            37.0,
+            1.0,
+            39.0,
+            3.0
+          ],
+          "texture": "484c6c48-2aac-59cc-8669-1c04d12a409c"
+        },
+        "down": {
+          "uv": [
+            40.0,
+            1.0,
+            42.0,
+            3.0
+          ],
+          "texture": "484c6c48-2aac-59cc-8669-1c04d12a409c"
+        }
+      }
+    },
+    {
+      "name": "wood_handle_neck",
+      "type": "cube",
+      "uuid": "7e4f4b97-e79c-5712-933c-b972a06321e8",
+      "from": [
+        6.5,
+        10,
+        7
+      ],
+      "to": [
+        9.5,
+        12,
+        9
+      ],
+      "origin": [
+        8,
+        8,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "autouv": 0,
+      "box_uv": false,
+      "color": 0,
+      "faces": {
+        "north": {
+          "uv": [
+            43.0,
+            1.0,
+            46.0,
+            3.0
+          ],
+          "texture": "484c6c48-2aac-59cc-8669-1c04d12a409c"
+        },
+        "south": {
+          "uv": [
+            47.0,
+            1.0,
+            50.0,
+            3.0
+          ],
+          "texture": "484c6c48-2aac-59cc-8669-1c04d12a409c"
+        },
+        "east": {
+          "uv": [
+            51.0,
+            1.0,
+            53.0,
+            3.0
+          ],
+          "texture": "484c6c48-2aac-59cc-8669-1c04d12a409c"
+        },
+        "west": {
+          "uv": [
+            54.0,
+            1.0,
+            56.0,
+            3.0
+          ],
+          "texture": "484c6c48-2aac-59cc-8669-1c04d12a409c"
+        },
+        "up": {
+          "uv": [
+            57.0,
+            1.0,
+            60.0,
+            3.0
+          ],
+          "texture": "484c6c48-2aac-59cc-8669-1c04d12a409c"
+        },
+        "down": {
+          "uv": [
+            1.0,
+            10.0,
+            4.0,
+            12.0
+          ],
+          "texture": "484c6c48-2aac-59cc-8669-1c04d12a409c"
+        }
+      }
+    },
+    {
+      "name": "iron_ferrule",
+      "type": "cube",
+      "uuid": "7c1a932e-0758-58cc-8538-2c0988638828",
+      "from": [
+        6,
+        12,
+        6.5
+      ],
+      "to": [
+        10,
+        15,
+        9.5
+      ],
+      "origin": [
+        8,
+        8,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "autouv": 0,
+      "box_uv": false,
+      "color": 0,
+      "faces": {
+        "north": {
+          "uv": [
+            5.0,
+            10.0,
+            9.0,
+            13.0
+          ],
+          "texture": "484c6c48-2aac-59cc-8669-1c04d12a409c"
+        },
+        "south": {
+          "uv": [
+            10.0,
+            10.0,
+            14.0,
+            13.0
+          ],
+          "texture": "484c6c48-2aac-59cc-8669-1c04d12a409c"
+        },
+        "east": {
+          "uv": [
+            15.0,
+            10.0,
+            18.0,
+            13.0
+          ],
+          "texture": "484c6c48-2aac-59cc-8669-1c04d12a409c"
+        },
+        "west": {
+          "uv": [
+            19.0,
+            10.0,
+            22.0,
+            13.0
+          ],
+          "texture": "484c6c48-2aac-59cc-8669-1c04d12a409c"
+        },
+        "up": {
+          "uv": [
+            23.0,
+            10.0,
+            27.0,
+            13.0
+          ],
+          "texture": "484c6c48-2aac-59cc-8669-1c04d12a409c"
+        },
+        "down": {
+          "uv": [
+            28.0,
+            10.0,
+            32.0,
+            13.0
+          ],
+          "texture": "484c6c48-2aac-59cc-8669-1c04d12a409c"
+        }
+      }
+    },
+    {
+      "name": "bristles",
+      "type": "cube",
+      "uuid": "99a1f548-9887-57ec-b143-ebf1b854f691",
+      "from": [
+        5.5,
+        15,
+        6.5
+      ],
+      "to": [
+        10.5,
+        19,
+        9.5
+      ],
+      "origin": [
+        8,
+        8,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "autouv": 0,
+      "box_uv": false,
+      "color": 0,
+      "faces": {
+        "north": {
+          "uv": [
+            33.0,
+            10.0,
+            38.0,
+            14.0
+          ],
+          "texture": "484c6c48-2aac-59cc-8669-1c04d12a409c"
+        },
+        "south": {
+          "uv": [
+            39.0,
+            10.0,
+            44.0,
+            14.0
+          ],
+          "texture": "484c6c48-2aac-59cc-8669-1c04d12a409c"
+        },
+        "east": {
+          "uv": [
+            45.0,
+            10.0,
+            48.0,
+            14.0
+          ],
+          "texture": "484c6c48-2aac-59cc-8669-1c04d12a409c"
+        },
+        "west": {
+          "uv": [
+            49.0,
+            10.0,
+            52.0,
+            14.0
+          ],
+          "texture": "484c6c48-2aac-59cc-8669-1c04d12a409c"
+        },
+        "up": {
+          "uv": [
+            53.0,
+            10.0,
+            58.0,
+            13.0
+          ],
+          "texture": "484c6c48-2aac-59cc-8669-1c04d12a409c"
+        },
+        "down": {
+          "uv": [
+            1.0,
+            15.0,
+            6.0,
+            18.0
+          ],
+          "texture": "484c6c48-2aac-59cc-8669-1c04d12a409c"
+        }
+      }
+    },
+    {
+      "name": "bristle_tip",
+      "type": "cube",
+      "uuid": "788284cc-109a-57c7-be75-682b5a1a88d3",
+      "from": [
+        6.5,
+        19,
+        6.5
+      ],
+      "to": [
+        9.5,
+        20,
+        9.5
+      ],
+      "origin": [
+        8,
+        8,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "rescale": false,
+      "autouv": 0,
+      "box_uv": false,
+      "color": 0,
+      "faces": {
+        "north": {
+          "uv": [
+            7.0,
+            15.0,
+            10.0,
+            16.0
+          ],
+          "texture": "484c6c48-2aac-59cc-8669-1c04d12a409c"
+        },
+        "south": {
+          "uv": [
+            11.0,
+            15.0,
+            14.0,
+            16.0
+          ],
+          "texture": "484c6c48-2aac-59cc-8669-1c04d12a409c"
+        },
+        "east": {
+          "uv": [
+            15.0,
+            15.0,
+            18.0,
+            16.0
+          ],
+          "texture": "484c6c48-2aac-59cc-8669-1c04d12a409c"
+        },
+        "west": {
+          "uv": [
+            19.0,
+            15.0,
+            22.0,
+            16.0
+          ],
+          "texture": "484c6c48-2aac-59cc-8669-1c04d12a409c"
+        },
+        "up": {
+          "uv": [
+            23.0,
+            15.0,
+            26.0,
+            18.0
+          ],
+          "texture": "484c6c48-2aac-59cc-8669-1c04d12a409c"
+        },
+        "down": {
+          "uv": [
+            27.0,
+            15.0,
+            30.0,
+            18.0
+          ],
+          "texture": "484c6c48-2aac-59cc-8669-1c04d12a409c"
+        }
+      }
+    }
+  ],
+  "groups": [
+    {
+      "name": "Handle",
+      "uuid": "3175f51c-09d4-5c8e-88a7-369943adc5f7",
+      "origin": [
+        8,
+        5.5,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "Ferrule",
+      "uuid": "7d4d415d-3759-5328-a644-51b3f5790fae",
+      "origin": [
+        8,
+        5.5,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "Bristles",
+      "uuid": "99848ca2-a752-5026-ad69-808acdd3eb35",
+      "origin": [
+        8,
+        5.5,
+        8
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "outliner": [
+    {
+      "uuid": "3175f51c-09d4-5c8e-88a7-369943adc5f7",
+      "isOpen": true,
+      "children": [
+        "43cc7d1b-6cee-5836-b262-8231ed504f7b",
+        "b753689c-a007-5907-9e7c-ae369f1a63bf",
+        "7e4f4b97-e79c-5712-933c-b972a06321e8"
+      ]
+    },
+    {
+      "uuid": "7d4d415d-3759-5328-a644-51b3f5790fae",
+      "isOpen": true,
+      "children": [
+        "7c1a932e-0758-58cc-8538-2c0988638828"
+      ]
+    },
+    {
+      "uuid": "99848ca2-a752-5026-ad69-808acdd3eb35",
+      "isOpen": true,
+      "children": [
+        "99a1f548-9887-57ec-b143-ebf1b854f691",
+        "788284cc-109a-57c7-be75-682b5a1a88d3"
+      ]
+    }
+  ],
+  "textures": [
+    {
+      "name": "paintbrush.png",
+      "namespace": "village_trades",
+      "folder": "item",
+      "id": "art",
+      "uuid": "484c6c48-2aac-59cc-8669-1c04d12a409c",
+      "mode": "bitmap",
+      "internal": true,
+      "width": 64,
+      "height": 64,
+      "uv_width": 64,
+      "uv_height": 64,
+      "source": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAABrElEQVR42u3WMUsCYRgH8L8i4RYFopDlIrg4BNIk4doSufUFrLmGhugqKKWhpe1IWhxbwj5C3dAHyEVIyauhDJI2t7fpFX29O+/sEMn/b/H9P969ysP5+AIzLgAAWj4tPjpdAMDNw0vAay7kkiK2EMZHp2uZ5fVu1/L+YrU2sLb7HvXUNoxyaeR+Mvc3IOhHF+XmsYWwZR53P3VtJ1W/9fT9fFfIJYWWT4tCLimsspZPi83VFdfrSQr5sYn6WKl5mgUn9UHR+TlP63/XgJl/AtgAmuKDkHpQOLu86P0dNZomKrruWBuVR9XWd4/EYjSC788vAMBiNIL78z3b+tbxlZA1o1waynb32f4E1INCo2liKTqPRtOE+Wo61pyyFXlN/3X7mXbv/f1MG1r2x7EuXyU1ez4HFKu1oe48Pj3DTc0vWvYHb62267psjmGT/3QQquh6YJyamk8ODl3t4zejXApwunkZgnfXO2I5Ecdb6x0AsJyIY23jdGCYqMPFavg4DSOrPA0NCHl5lNSsTla7ScuDEBERERERERERERERERERERERERERERHRRP0CyGyI2GhVCkAAAAAASUVORK5CYII="
+    }
+  ],
+  "display": {
+    "fixed": {
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    "gui": {
+      "rotation": [
+        0,
+        -22.5,
+        -35
+      ],
+      "translation": [
+        0,
+        -1,
+        0
+      ],
+      "scale": [
+        0.72,
+        0.72,
+        0.72
+      ]
+    },
+    "ground": {
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        0,
+        3,
+        0
+      ],
+      "scale": [
+        0.5,
+        0.5,
+        0.5
+      ]
+    },
+    "firstperson_righthand": {
+      "rotation": [
+        0,
+        -90,
+        12
+      ],
+      "translation": [
+        1.13,
+        3.2,
+        1.13
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ]
+    },
+    "firstperson_lefthand": {
+      "rotation": [
+        0,
+        90,
+        -12
+      ],
+      "translation": [
+        1.13,
+        3.2,
+        1.13
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ]
+    },
+    "thirdperson_righthand": {
+      "rotation": [
+        0,
+        90,
+        0
+      ],
+      "translation": [
+        0,
+        3,
+        1
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ]
+    },
+    "thirdperson_lefthand": {
+      "rotation": [
+        0,
+        -90,
+        0
+      ],
+      "translation": [
+        0,
+        3,
+        1
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ]
+    }
+  }
+}
