@@ -2,7 +2,7 @@
 
 By Kernel Person.
 
-Four independent plugins, examples version **1.1.0**, built **only** against public Renderer API **v1.0.1**. They use the unchanged commercial Renderer **1.0.0**. Start with Postcards: its command handler is the shortest capture → render → Minecraft map example.
+Four independent plugins, examples version **1.1.1**, built **only** against public Renderer API **v1.0.1**. They use the unchanged commercial Renderer **1.0.0**. Start with Postcards: its command handler is the shortest capture → render → Minecraft map example.
 
 | Plugin | Try it | Demonstrates |
 | --- | --- | --- |
@@ -36,7 +36,7 @@ Read [PostcardsPlugin.java](postcards/src/main/java/io/github/kernelperson/postc
 
 As an operator, run `/rendercamera` and place the dispenser while looking in the direction you want to photograph. Placement stores your exact yaw and up/down pitch, independently of the dispenser's blocky appearance. Break and place a new camera to change its aim. Pulse adjacent redstone, then open the dispenser to find the map. Continuous power takes one picture, not a stream.
 
-The camera suppresses ordinary dispensing, needs an empty inventory slot, ignores triggers while busy/cooling down and does not consume materials. A high pling means success; a low tone means busy, full or failed. Break it to remove it; obtain another tagged camera with the command. An ordinary dispenser is never treated as a camera.
+The camera suppresses ordinary dispensing, needs an empty inventory slot, ignores triggers while busy/cooling down and does not consume materials. An accepted request emits one brief white flash just outside the lens, with or without the resource pack. Enable client particles to see it. The flash signals capture started, not successful completion; it does not illuminate nearby blocks. A high pling means success; a low tone means busy, full or failed. Break it to remove it; obtain another tagged camera with the command. An ordinary dispenser is never treated as a camera.
 
 Permission `rendererexamples.camera` defaults to operators. Locations and random instance identities persist in dispenser data. An unloaded, broken or replaced camera cannot receive an old result. The teaching example limits itself to 256 loaded cameras and eight concurrent renders.
 
@@ -81,6 +81,8 @@ Permission `rendererexamples.pov` defaults to **OP**. This is an administration 
 2. `/pov monitor` supplies a placeable desk monitor linked to your selection. Leave two blocks of height and space in front; supports and screen must fit within one chunk. Placement fires normal block/hanging protection events. Sneak + right-click your screen to remove it, with an empty inventory slot.
 3. Enable `native-models: true` in `plugins/RendererAdminPov/config.yml` after installing the pack, then restart. Without the pack setting, the same private live map uses vanilla supports. The optional model does not contain a baked image.
 4. `/pov stop` blanks your receivers and removes demand for your feed. Monitors stay placed for later use.
+
+Recording alone? `/pov YourExactPlayerName` can select yourself. Hold the map in your offhand and slowly pan between scenes, or watch your own desk monitor. Label the clip as a **solo self-view demo**, not another player's view. See the [recording walkthrough](docs/recording-guide.md) for easel, camera/photo pickup, POV and Postcards shot lists.
 
 The target's server-side eye position and exact yaw/pitch are captured. This is **rendered world-view sampling, not screen sharing**: no HUD, chat, inventory UI, client shaders or audio. It does not record frames or store a history. Administrators can still take their own screenshots; this plugin cannot erase images a client has already received.
 
@@ -127,4 +129,4 @@ Distribute your add-on, not the commercial Renderer provider, native binaries or
 
 Unit tests and builds are reproducible with `mvn clean verify`. Runtime acceptance and remaining manual visual checks are recorded in [docs/acceptance.md](docs/acceptance.md); do not mistake automated geometry/event checks for an actual human painting playtest.
 
-Release packaging: after committing reviewed source, run `python3 tools/package_examples.py --output target/ShutterBug-Renderer-Examples-1.1.0.zip`. It validates four JAR inventories and the reviewed resource-pack bytes, then records source/artifact hashes. The ZIP contains four plugin JARs, the pack, README, license, acceptance notes and manifest. No commercial provider, keys or test probe are included. Existing 1.0.0 downloads are not replaced. Editable artwork and regeneration instructions are in [artwork/README.md](artwork/README.md).
+Release packaging: after committing reviewed source, run `python3 tools/package_examples.py --output target/ShutterBug-Renderer-Examples-1.1.1.zip`. It validates four JAR inventories and the reviewed resource-pack bytes, then records source/artifact hashes. The ZIP contains four plugin JARs, the unchanged 1.1.0 pack, README, recording guide, license, acceptance notes and manifest. No commercial provider, keys or test probe are included. Existing 1.0.0 and 1.1.0 downloads are not replaced. Editable artwork and regeneration instructions are in [artwork/README.md](artwork/README.md).

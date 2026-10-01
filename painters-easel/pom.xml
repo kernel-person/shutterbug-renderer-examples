@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0">
   <modelVersion>4.0.0</modelVersion>
-  <parent><groupId>io.github.kernelperson</groupId><artifactId>renderer-examples</artifactId><version>1.1.0</version></parent>
+  <parent><groupId>io.github.kernelperson</groupId><artifactId>renderer-examples</artifactId><version>1.1.1</version></parent>
   <artifactId>painters-easel</artifactId>
   <build><finalName>RendererPaintersEasel</finalName></build>
 </project>

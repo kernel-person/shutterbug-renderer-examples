@@ -53,6 +53,8 @@ class PackageTests(unittest.TestCase):
         (root/'LICENSE').write_text('Apache-2.0\n')
         (root/'docs'/'acceptance.md').write_text('Acceptance\n')
         (root/'docs'/'release-1.1.0-evidence.md').write_text('Evidence\n')
+        (root/'docs'/'release-1.1.1-evidence.md').write_text('Flash verification\n')
+        (root/'docs'/'recording-guide.md').write_text('Solo POV and camera recording walkthrough\n')
         for folder,jar_name,package in [('postcards','RendererPostcards','postcards'),
                                         ('redstone-camera','RendererRedstoneCamera','camera'),
                                         ('painters-easel','RendererPaintersEasel','easel'),
@@ -73,7 +75,7 @@ class PackageTests(unittest.TestCase):
             self.assertEqual(module.RESOURCE_PACK_SHA256,
                              hashlib.sha256(pack).hexdigest())
             files=module.collect_files(root)
-            self.assertEqual({'README.md','LICENSE','docs/acceptance.md','docs/release-1.1.0-evidence.md',
+            self.assertEqual({'README.md','LICENSE','docs/acceptance.md','docs/release-1.1.1-evidence.md','docs/recording-guide.md',
                               'RendererPostcards.jar','RendererRedstoneCamera.jar','RendererPaintersEasel.jar','RendererAdminPov.jar',
                               module.RESOURCE_PACK},set(files))
             self.assertEqual(pack,files[module.RESOURCE_PACK])

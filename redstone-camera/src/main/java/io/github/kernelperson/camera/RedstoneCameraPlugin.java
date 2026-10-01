@@ -121,7 +121,7 @@ public final class RedstoneCameraPlugin extends JavaPlugin implements Listener {
         if(dispenser.getInventory().firstEmpty()<0) { feedback(camera,false);return; }
         CameraPose pose=CameraPose.read(dispenser);
         Location lens=CameraPose.lens(camera.block().getLocation(),pose.yaw(),pose.pitch());
-        renders.request(camera.id(),lens,camera::valid,frame->{
+        boolean accepted=renders.request(camera.id(),lens,camera::valid,frame->{
             if(!camera.valid()) return;
             Dispenser current=(Dispenser)camera.block().getState();
             int slot=current.getInventory().firstEmpty();
@@ -131,6 +131,9 @@ public final class RedstoneCameraPlugin extends JavaPlugin implements Listener {
                 current.getInventory().setItem(slot,map);feedback(camera,true);
             } catch(IOException failure) { getLogger().warning("Camera photo could not be saved.");feedback(camera,false); }
         },message->feedback(camera,false));
+        // A one-shot client effect, outside the optics. No entities, light blocks,
+        // delayed cleanup or resource-pack changes; acceptance is not completion.
+        if(accepted) camera.block().getWorld().spawnParticle(Particle.FLASH,lens,1,0,0,0,0);
     }
     private void feedback(CameraTarget camera,boolean success) {
         if(camera.valid()) camera.block().getWorld().playSound(camera.block().getLocation(),

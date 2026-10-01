@@ -1,6 +1,12 @@
 # Acceptance checklist
 
-## Examples 1.1.0 — current status (2026-09-29)
+## Examples 1.1.1 — camera flash and recording guide (2026-10-01)
+
+See [patch verification](release-1.1.1-evidence.md) and the [recording guide](recording-guide.md). The pack stays at 1.1.0. Verify a visible single flash on an accepted redstone request, no flash during cooldown or a full inventory, then successful photo pickup. Enable client particles. Check steep and diagonal camera angles. This client check is pending; unit tests cannot establish appearance. No live server was updated by this patch.
+
+The solo `/pov YourExactPlayerName` walkthrough uses the existing self-target support. It does not replace multi-owner/privacy acceptance or actual sustained update measurements. The remaining licensed Paper/client gates below also apply to 1.1.1. RIC and MCModels settings were not changed.
+
+## Examples 1.1.0 — status recorded 2026-09-29
 
 The four-example update is separate from the preserved 1.0.0 release below. No commercial Renderer/API, license, marketplace listing or live playtest server was modified.
 

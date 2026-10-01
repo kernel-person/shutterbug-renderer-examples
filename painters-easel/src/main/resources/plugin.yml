@@ -1,5 +1,5 @@
 name: RendererPaintersEasel
-version: 1.1.0
+version: 1.1.1
 main: io.github.kernelperson.easel.PaintersEaselPlugin
 api-version: '1.21'
 depend: [ShutterBugRenderer]
