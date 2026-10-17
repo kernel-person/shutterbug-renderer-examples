@@ -4,7 +4,7 @@ By Kernel Person.
 
 Four independent plugins built **only** against the public Renderer API. Start with Postcards: its command handler is the shortest capture → render → Minecraft map example.
 
-**Development branch:** these unreleased fixes require the locally supplied API **v1.0.2-SNAPSHOT** and matching development provider for POV entity exclusions and framed-map capture. This coordinate is not a published JitPack tag. The previous examples **1.1.1** release, SDK **v1.0.1**, and commercial Renderer **1.0.0** downloads remain unchanged. Do not replace release downloads with working-tree builds.
+**Examples 1.2.0** targets the stable public API **v1.0.2** and the matching Renderer **1.0.0** build with POV entity exclusions and framed-map capture. Older examples **1.1.1**, SDK **v1.0.1** and previous Renderer downloads are preserved; this is a new examples archive, not a replacement of old release bytes. See the [1.2.0 verification record](docs/release-1.2.0-evidence.md) for release gates and exact-artifact acceptance status.
 
 | Plugin | Try it | Demonstrates |
 | --- | --- | --- |
@@ -92,6 +92,8 @@ The target's server-side eye position and exact yaw/pitch are captured. This is 
 
 POV excludes exactly the target player's UUID from capture, so looking down does not render the target's own body around the camera. Other players and entities remain visible. An older provider lacking this API option is rejected at startup with an update message; it does not silently fall back to self-obstructed capture.
 
+The matching provider captures loaded framed maps from their current completed pixels, including these public POV screens. Camera photos and easel reference captures can therefore include a displayed map. This is a bounded snapshot of an existing frame, not recursive rendering or screen sharing; feedback uses the previous completed image.
+
 All POV maps use one non-contextual renderer: viewers receive the same completed pixels regardless of map ownership or viewer permission. This is intentional public display, not a privacy boundary. Target selection, capture authorization and target visibility still require the owning operator's permission; monitor placement and removal remain owner-controlled. Spectators cannot start or keep a feed running: only an authorized owner's held receiver or monitor-watching demand counts. Already delivered images and photographs cannot be unpublished; old items with a legacy “Private” name are public too.
 
 Stopping clears the owner's selected feed; permission/access loss removes that owner's capture demand at the next one-tick check (normally 50 ms; longer if ticks lag). Periodic status/map-cache sends remain every five ticks; completed frames and explicit stop/invalidation are sent immediately. Target disappearance, teleport/world changes, provider removal and shutdown invalidate applicable frames or work, and obsolete completions cannot restore them. Other authorized owners may still demand a shared target. Restart restores receiver/monitor identity but no pixels: screens show **NO FEED** until a fresh authorized capture completes. None of these events changes the renderer into a private mode.
@@ -102,7 +104,7 @@ Only ownership, map IDs and selected targets are stored in `bindings.yml`; monit
 
 ## Build and adapt
 
-For this development branch, first install the candidate API JAR and its supplied POM in your local Maven repository (coordinate `com.github.kernel-person:shutterbug-renderer-api:v1.0.2-SNAPSHOT`). Do not rename or overwrite the cached v1.0.1 artifact. Use the matching candidate provider at runtime; a standalone SDK JAR is never a server plugin.
+Use the public SDK coordinate `com.github.kernel-person:shutterbug-renderer-api:v1.0.2` from JitPack and the matching Renderer provider at runtime. A standalone SDK JAR is never a server plugin. Do not rename or overwrite a cached v1.0.1 artifact to satisfy the new coordinate.
 
 Install JDK21+ and Maven, then:
 
@@ -116,7 +118,7 @@ Output: each module's `target/Renderer*.jar`. No shading is needed: depend on th
 <dependency>
   <groupId>com.github.kernel-person</groupId>
   <artifactId>shutterbug-renderer-api</artifactId>
-  <version>v1.0.1</version>
+  <version>v1.0.2</version>
   <scope>provided</scope>
 </dependency>
 ```
@@ -139,4 +141,4 @@ Distribute your add-on, not the commercial Renderer provider, native binaries or
 
 Unit tests and builds are reproducible with `mvn clean verify`. Runtime acceptance and remaining manual visual checks are recorded in [docs/acceptance.md](docs/acceptance.md); do not mistake automated geometry/event checks for an actual human painting playtest.
 
-Release packaging: after committing reviewed source, run `python3 tools/package_examples.py --output target/ShutterBug-Renderer-Examples-1.1.1.zip`. It validates four JAR inventories and the reviewed resource-pack bytes, then records source/artifact hashes. The ZIP contains four plugin JARs, the unchanged 1.1.0 pack, README, recording guide, license, acceptance notes and manifest. No commercial provider, keys or test probe are included. Existing 1.0.0 and 1.1.0 downloads are not replaced. Editable artwork and regeneration instructions are in [artwork/README.md](artwork/README.md).
+Release packaging: after committing reviewed source, run `python3 tools/package_examples.py --output target/ShutterBug-Renderer-Examples-1.2.0.zip`. It validates four JAR inventories and the reviewed resource-pack bytes, then records SDK version, source commit and artifact hashes. The ZIP contains four plugin JARs, the unchanged 1.1.0 pack, README, recording guide, license, current and historical acceptance/evidence notes, and manifest. No commercial provider, keys or test probe are included. Existing 1.0.0, 1.1.0 and 1.1.1 downloads are not replaced. Editable artwork and regeneration instructions are in [artwork/README.md](artwork/README.md).

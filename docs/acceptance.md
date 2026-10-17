@@ -1,5 +1,11 @@
 # Acceptance checklist
 
+## Examples 1.2.0 — stable SDK and current demo contract (2026-10-17)
+
+Examples 1.2.0 uses stable SDK v1.0.2 and a matching Renderer 1.0.0 build with UUID entity exclusions and current framed-map capture. The resource pack is the exact reviewed 1.1.0 ZIP; previous release files and evidence are preserved. See [the new verification record](release-1.2.0-evidence.md), not historical JAR hashes, for these bytes.
+
+The current contract is the six-way camera and public POV behavior below: 4 updates/second by default, best-effort only, with owner-controlled capture demand and no private pixels. Current framed maps can appear in photos and easel reference captures; feedback samples the previous completed frame. Exact-artifact licensed Paper tests, supported buyer activation and actual client checks remain separate gates. Historical or solo footage does not prove sustained throughput, cross-owner controls or personalized buyer activation.
+
 ## Current POV contract — shared public screens (2026-10-17)
 
 All receiver maps and desk screens are non-contextual, public and photographable, including copied maps and unauthorized viewers. `/pov demo` only selects self; `/pov YourExactPlayerName` and `/pov <other-player>` use the same renderer. `/pov demo [updates-per-second]` also sets the shared best-effort per-target cadence for this server run (whole numbers 1-20; restart default 4, 250 ms start-to-start). Operator permission, target visibility, binding ownership and owner-only placement/removal remain enforced. Spectators cannot request or sustain captures. Verify shared completed pixels, stale/no-feed status, normal/demo equivalence, rate/range/rejection handling, healthy work and failure cooldown preservation, one-tick scheduling without redundant map sends, two-owner/shared-target demand, stale callbacks after stop/provider reload/shutdown and restart without persisted frame pixels. Actual client appearance and sustained timing remain separate operator checks; no client is launched by automation.

@@ -27,7 +27,7 @@ public final class AdminPovPlugin extends JavaPlugin implements Listener {
     static long now(){return System.nanoTime()/1_000_000;}
     @Override public void onEnable() {
         if(!PovCapture.supportsTargetExclusions()) {
-            getLogger().severe("RendererAdminPov requires a matching ShutterBugRenderer provider with UUID capture exclusions (API v1.0.2-SNAPSHOT or newer). Update the provider before enabling POV.");
+            getLogger().severe("RendererAdminPov requires a matching ShutterBugRenderer provider with UUID capture exclusions (API v1.0.2 or newer). Update the provider before enabling POV.");
             getServer().getPluginManager().disablePlugin(this);return;
         }
         saveDefaultConfig();store=new BindingStore(getDataFolder().toPath().resolve("bindings.yml"));capture=new PovCapture(this);

@@ -1,6 +1,6 @@
 # Recording the four examples
 
-For the current unreleased development branch, use the locally supplied SDK **v1.0.2-SNAPSHOT** and matching development provider described in the [README](../README.md). Published examples **1.1.1**, Renderer **1.0.0** and SDK **v1.0.1** downloads remain unchanged. The resource pack remains **1.1.0**. These are shot instructions, not a claim that the latest build has passed client acceptance.
+Use examples **1.2.0**, stable SDK **v1.0.2** and the matching Renderer **1.0.0** build described in the [README](../README.md), with entity exclusions and framed-map capture. Older examples **1.1.1**, Renderer and SDK **v1.0.1** downloads remain unchanged. The resource pack remains **1.1.0**, byte for byte. These are shot instructions, not a claim that the latest build has passed client acceptance; see the [1.2.0 verification record](release-1.2.0-evidence.md).
 
 ## Prepare
 

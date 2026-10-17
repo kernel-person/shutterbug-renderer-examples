@@ -1,7 +1,10 @@
 import importlib.util
 import hashlib
 import io
+import json
 from pathlib import Path
+import subprocess
+import sys
 import tempfile
 import unittest
 import zipfile
@@ -54,6 +57,7 @@ class PackageTests(unittest.TestCase):
         (root/'docs'/'acceptance.md').write_text('Acceptance\n')
         (root/'docs'/'release-1.1.0-evidence.md').write_text('Evidence\n')
         (root/'docs'/'release-1.1.1-evidence.md').write_text('Flash verification\n')
+        (root/'docs'/'release-1.2.0-evidence.md').write_text('Stable SDK and public-screen verification\n')
         (root/'docs'/'recording-guide.md').write_text('Solo POV and camera recording walkthrough\n')
         for folder,jar_name,package in [('postcards','RendererPostcards','postcards'),
                                         ('redstone-camera','RendererRedstoneCamera','camera'),
@@ -75,7 +79,8 @@ class PackageTests(unittest.TestCase):
             self.assertEqual(module.RESOURCE_PACK_SHA256,
                              hashlib.sha256(pack).hexdigest())
             files=module.collect_files(root)
-            self.assertEqual({'README.md','LICENSE','docs/acceptance.md','docs/release-1.1.1-evidence.md','docs/recording-guide.md',
+            self.assertEqual({'README.md','LICENSE','docs/acceptance.md','docs/release-1.1.0-evidence.md',
+                              'docs/release-1.1.1-evidence.md','docs/release-1.2.0-evidence.md','docs/recording-guide.md',
                               'RendererPostcards.jar','RendererRedstoneCamera.jar','RendererPaintersEasel.jar','RendererAdminPov.jar',
                               module.RESOURCE_PACK},set(files))
             self.assertEqual(pack,files[module.RESOURCE_PACK])
@@ -88,5 +93,39 @@ class PackageTests(unittest.TestCase):
             with self.assertRaises(ValueError): module.collect_files(root)
     def test_zip_output_is_reproducible(self):
         self.assertEqual(module.make_zip({'b':b'2','a':b'1'}),module.make_zip({'a':b'1','b':b'2'}))
+    def test_cli_packages_stable_release_with_reproducible_provenance(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory)
+            self.make_package_root(root)
+            (root/'tools').mkdir()
+            script=root/'tools'/'package_examples.py'
+            script.write_bytes(Path(module.__file__).read_bytes())
+            subprocess.run(['git','init','-q',str(root)],check=True)
+            subprocess.run(['git','add','.'],cwd=root,check=True)
+            subprocess.run(['git','-c','user.name=Release Test','-c','user.email=release@example.invalid',
+                            'commit','-qm','Packaging fixture'],cwd=root,check=True)
+            commit=subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip()
+            outputs=[root.parent/(root.name+'-first.zip'),root.parent/(root.name+'-second.zip')]
+            try:
+                for output in outputs:
+                    subprocess.run([sys.executable,str(script),'--output',str(output)],check=True,capture_output=True)
+                self.assertEqual(outputs[0].read_bytes(),outputs[1].read_bytes())
+                with zipfile.ZipFile(outputs[0]) as archive:
+                    manifest=json.loads(archive.read('manifest.json'))
+                    self.assertEqual('1.2.0',manifest['version'])
+                    self.assertEqual('v1.0.2',manifest['sdkVersion'])
+                    self.assertEqual(commit,manifest['sourceCommit'])
+                    self.assertFalse(manifest['providerIncluded'])
+                    self.assertFalse(manifest['testProbeIncluded'])
+                    self.assertIn('docs/release-1.2.0-evidence.md',manifest['sha256'])
+                    for name,checksum in manifest['sha256'].items():
+                        self.assertEqual(hashlib.sha256(archive.read(name)).hexdigest(),checksum)
+                for output in outputs:
+                    self.assertEqual(hashlib.sha256(output.read_bytes()).hexdigest()+'  '+output.name+'\n',
+                                     output.with_suffix('.zip.sha256').read_text())
+            finally:
+                for output in outputs:
+                    output.unlink(missing_ok=True)
+                    output.with_suffix('.zip.sha256').unlink(missing_ok=True)
 
 if __name__=='__main__': unittest.main()
