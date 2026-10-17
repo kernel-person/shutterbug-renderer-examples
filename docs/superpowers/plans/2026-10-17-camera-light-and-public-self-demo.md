@@ -48,6 +48,6 @@ Files: `admin-pov/.../AdminPovPlugin.java`, new public demo renderer, existing t
 
 - [x] Run full examples Maven tests, relevant packaging checks, and independent diff review.
 - [x] Test exact camera JAR lighting and public-map capture on isolated Paper; preserve red/green evidence.
-- [ ] Back up changed recording-server JARs before installing. Preserve provider, other examples, pack, license and world.
-- [ ] Graceful restart with user notice, confirm all five plugins load and no new runtime exceptions.
-- [ ] Provide `/pov demo` feedback recording steps; leave final appearance for user's client check.
+- [x] Back up changed recording-server JARs before installing. Preserve provider, other examples, pack, license and world.
+- [x] Graceful restart with user notice, confirm all five plugins load and no new runtime exceptions.
+- [x] Provide `/pov demo` feedback recording steps; leave final appearance for user's client check.
