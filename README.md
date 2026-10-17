@@ -2,7 +2,9 @@
 
 By Kernel Person.
 
-Four independent plugins, examples version **1.1.1**, built **only** against public Renderer API **v1.0.1**. They use the unchanged commercial Renderer **1.0.0**. Start with Postcards: its command handler is the shortest capture → render → Minecraft map example.
+Four independent plugins built **only** against the public Renderer API. Start with Postcards: its command handler is the shortest capture → render → Minecraft map example.
+
+**Development branch:** these unreleased fixes require the locally supplied API **v1.0.2-SNAPSHOT** and matching development provider for POV entity exclusions and framed-map capture. This coordinate is not a published JitPack tag. The previous examples **1.1.1** release, SDK **v1.0.1**, and commercial Renderer **1.0.0** downloads remain unchanged. Do not replace release downloads with working-tree builds.
 
 | Plugin | Try it | Demonstrates |
 | --- | --- | --- |
@@ -34,7 +36,7 @@ Read [PostcardsPlugin.java](postcards/src/main/java/io/github/kernelperson/postc
 
 ### Redstone Camera
 
-As an operator, run `/rendercamera` and place the dispenser while looking in the direction you want to photograph. Placement stores your exact yaw and up/down pitch, independently of the dispenser's blocky appearance. Break and place a new camera to change its aim. Pulse adjacent redstone, then open the dispenser to find the map. Continuous power takes one picture, not a stream.
+As an operator, run `/rendercamera` and place it like a vanilla dispenser: the lens faces toward you. Stand on the side you want it to photograph when placing, or above/below it for vertical shots, then move out of the picture. The camera has only six directions: north, south, east, west, straight up or straight down; no diagonal or free-angle aiming. Break and place a new camera to change its aim. Pulse adjacent redstone, then open the dispenser to find the map. Continuous power takes one picture, not a stream.
 
 The camera suppresses ordinary dispensing, needs an empty inventory slot, ignores triggers while busy/cooling down and does not consume materials. An accepted request emits one brief white flash just outside the lens, with or without the resource pack. Enable client particles to see it. The flash signals capture started, not successful completion; it does not illuminate nearby blocks. A high pling means success; a low tone means busy, full or failed. Break it to remove it; obtain another tagged camera with the command. An ordinary dispenser is never treated as a camera.
 
@@ -42,7 +44,7 @@ Permission `rendererexamples.camera` defaults to operators. Locations and random
 
 Read [RedstoneCameraPlugin.java](redstone-camera/src/main/java/io/github/kernelperson/camera/RedstoneCameraPlugin.java).
 
-With the optional 1.1.0 resource pack, set `native-models: true` in `plugins/RendererRedstoneCamera/config.yml` and restart. The wood/metal housing stays on the dispenser; its lens follows the exact stored yaw/pitch. Both are cosmetic native ItemDisplays. The capture point clears the housing, lens and dispenser at every angle. Inventory, redstone and saved camera identity are unchanged. Ordinary dispensers are not retextured.
+With the optional 1.1.0 resource pack, set `native-models: true` in `plugins/RendererRedstoneCamera/config.yml` and restart. The wood/metal housing stays on the dispenser; its lens, photo direction and flash all follow the dispenser's six-way facing. Both models are cosmetic native ItemDisplays. The capture point clears the housing, lens and dispenser in all six directions. Existing exact-angle cameras are normalized to their dispenser facing when loaded; their inventory and saved identity are preserved. Ordinary dispensers are not retextured.
 
 ### Painter's Easel
 
@@ -86,6 +88,8 @@ Recording alone? `/pov YourExactPlayerName` can select yourself. Hold the map in
 
 The target's server-side eye position and exact yaw/pitch are captured. This is **rendered world-view sampling, not screen sharing**: no HUD, chat, inventory UI, client shaders or audio. It does not record frames or store a history. Administrators can still take their own screenshots; this plugin cannot erase images a client has already received.
 
+POV excludes exactly the target player's UUID from capture, so looking down does not render the target's own body around the camera. Other players and entities remain visible. An older provider lacking this API option is rejected at startup with an update message; it does not silently fall back to self-obstructed capture.
+
 Only the owning authorized admin gets image pixels. Other players see a blank contextual map, even if they copy/drop/pick up the receiver or approach someone else's monitor. Access and target visibility are checked again at delivery. Permission loss, stopping, logout, target disappearance, teleport/world changes and provider reload invalidate applicable work or images. After a server restart the screen is blank until authorization and a fresh capture succeed.
 
 Capture runs only while an authorized owner holds a receiver, or looks toward their loaded monitor within 16 blocks with line of sight. Same-target subscribers share a completed frame. Maximum: **two active targets and one capture/render pipeline globally**; there is no frame queue. Render settings are 128×128 CLASSIC, radius 16, two capture chunks per tick, one native worker, unchanged provider memory limits and a 30-second deadline. A one-second interval is a target, not a latency guarantee: slow work skips intervals; failures back off from 2 to at most 30 seconds. Images older than three seconds are labelled **STALE**; a blank authorized receiver says **NO FEED**. Unloaded nearby chunks are rejected, never generated or loaded synchronously.
@@ -93,6 +97,8 @@ Capture runs only while an authorized owner holds a receiver, or looks toward th
 Only ownership, map IDs and selected targets are stored in `bindings.yml`; monitor ownership lives in ItemFrame data. Back these up with world map/entity data. Maximum 128 receiver owners and 128 active loaded monitors. Excess restored monitors stay protected with empty frames and do not request renders; unload other monitors, then reload their chunk to reactivate them. If several idle owners later demand more than two distinct targets, the first two targets in saved owner order are admitted; other receivers wait until demand frees a slot. See [AdminPovPlugin.java](admin-pov/src/main/java/io/github/kernelperson/pov/AdminPovPlugin.java), [FeedLoop.java](admin-pov/src/main/java/io/github/kernelperson/pov/FeedLoop.java) and [PrivateMap.java](admin-pov/src/main/java/io/github/kernelperson/pov/PrivateMap.java).
 
 ## Build and adapt
+
+For this development branch, first install the candidate API JAR and its supplied POM in your local Maven repository (coordinate `com.github.kernel-person:shutterbug-renderer-api:v1.0.2-SNAPSHOT`). Do not rename or overwrite the cached v1.0.1 artifact. Use the matching candidate provider at runtime; a standalone SDK JAR is never a server plugin.
 
 Install JDK21+ and Maven, then:
 

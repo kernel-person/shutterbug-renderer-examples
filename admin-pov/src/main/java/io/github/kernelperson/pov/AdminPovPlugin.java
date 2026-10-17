@@ -26,6 +26,10 @@ public final class AdminPovPlugin extends JavaPlugin implements Listener {
     private boolean closed;
     static long now(){return System.nanoTime()/1_000_000;}
     @Override public void onEnable() {
+        if(!PovCapture.supportsTargetExclusions()) {
+            getLogger().severe("RendererAdminPov requires a matching ShutterBugRenderer provider with UUID capture exclusions (API v1.0.2-SNAPSHOT or newer). Update the provider before enabling POV.");
+            getServer().getPluginManager().disablePlugin(this);return;
+        }
         saveDefaultConfig();store=new BindingStore(getDataFolder().toPath().resolve("bindings.yml"));capture=new PovCapture(this);
         try {
             for(var binding:store.load()) {
@@ -127,7 +131,7 @@ public final class AdminPovPlugin extends JavaPlugin implements Listener {
                 if(target==null||!target.isOnline()){loop.failed(next,now());}
                 else {
                     active=next;UUID world=target.getWorld().getUID();
-                    capture.start(target.getEyeLocation(),()->loop.current(next)&&demanded(next.target())
+                    capture.start(target.getEyeLocation(),target.getUniqueId(),()->loop.current(next)&&demanded(next.target())
                             &&target.isOnline()&&world.equals(target.getWorld().getUID()),pixels->{
                         if(loop.complete(next,now(),pixels)){active=null;refreshOwners();}
                     },()->{loop.failed(next,now());if(Objects.equals(active,next))active=null;});

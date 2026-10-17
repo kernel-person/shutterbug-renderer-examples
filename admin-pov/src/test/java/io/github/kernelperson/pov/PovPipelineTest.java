@@ -12,6 +12,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class PovPipelineTest {
+    final UUID selected=UUID.fromString("00000000-0000-0000-0000-000000000001");
     final Plugin plugin=mock(Plugin.class);
     final Server server=mock(Server.class);
     final BukkitScheduler scheduler=mock(BukkitScheduler.class);
@@ -37,8 +38,25 @@ class PovPipelineTest {
         when(scheduler.runTaskLater(eq(plugin),any(Runnable.class),anyLong())).thenAnswer(i->{deadlines.add(i.getArgument(1));return mock(BukkitTask.class);});
         capture=new PovCapture(plugin);
     }
-    void start(){capture.start(new Location(world,0,64,0,33,-21),valid::get,pixels->delivered.incrementAndGet(),failures::incrementAndGet);}
+    void start(){capture.start(new Location(world,0,64,0,33,-21),selected,valid::get,pixels->delivered.incrementAndGet(),failures::incrementAndGet);}
     void drain(){while(!main.isEmpty())main.remove().run();}
+    @Test void targetUuidIsTheOnlyExcludedEntityInTheCaptureRequest() throws Exception {
+        var start=assertDoesNotThrow(()->PovCapture.class.getDeclaredMethod("start",Location.class,UUID.class,
+                java.util.function.BooleanSupplier.class,java.util.function.Consumer.class,Runnable.class));
+        start.invoke(capture,new Location(world,0,64,0,33,-21),selected,
+                (java.util.function.BooleanSupplier)valid::get,
+                (java.util.function.Consumer<byte[]>)pixels->delivered.incrementAndGet(),
+                (Runnable)failures::incrementAndGet);
+
+        var request=org.mockito.ArgumentCaptor.forClass(CaptureRequest.class);
+        verify(client).capture(request.capture());
+        assertEquals(Set.of(selected),request.getValue().excludedEntityIds());
+        assertEquals(33,request.getValue().camera().getYaw());
+        assertEquals(-21,request.getValue().camera().getPitch());
+        assertEquals(16,request.getValue().radius());
+        assertEquals(2,request.getValue().chunksPerTick());
+        capture.close();
+    }
     @Test void actualRgbaQuantizationDeliversOneMapOnMainThreadAndReleasesPipeline() {
         start();captured.complete(mock(Scene.class));drain();
         byte[] rgba=new byte[128*128*4];Arrays.fill(rgba,(byte)255);

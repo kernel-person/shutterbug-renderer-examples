@@ -20,7 +20,7 @@ Only the initial scene capture renders. Painting strokes update the existing map
 
 ## Redstone Camera — about 10–15 seconds
 
-1. `/rendercamera`; place it while looking at the scene you want photographed. Placement remembers yaw and pitch, so place afresh to change aim.
+1. `/rendercamera`; place it like a vanilla dispenser, with the lens facing toward you. Stand on the scene side of the block while placing, then step aside. Only north, south, east, west, straight up and straight down are supported; place from above/below for vertical shots. Break and place afresh to change aim. Existing cameras use their dispenser facing, not old diagonal angles.
 2. Frame the camera lens from an oblique angle and pulse adjacent redstone once.
 3. An accepted request emits one brief white flash just outside the lens. This is a visual particle, not illumination of nearby blocks, and it means **capture started**, not that the photo is ready.
 4. Wait for the high success tone, open the dispenser and take the map from its inventory. Show the resulting photo.

@@ -3,6 +3,7 @@ package io.github.kernelperson.probe;
 import ke.ric.renderer.api.RendererService;
 import org.bukkit.*;
 import org.bukkit.block.*;
+import org.bukkit.block.data.Directional;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.entity.*;
 import org.bukkit.event.block.*;
@@ -76,9 +77,14 @@ public final class ExamplesProbe extends JavaPlugin {
             ItemStack item=find(Material.DISPENSER);check(item!=null,"camera item");
             camera=world.getBlockAt(baseX+4,baseY,baseZ);
             BlockState before=camera.getState();camera.setType(Material.DISPENSER);
+            // Synthetic placement does not run vanilla placement logic: face toward the SOUTH-looking placer.
+            var cameraFacing=(Directional)camera.getBlockData();cameraFacing.setFacing(BlockFace.NORTH);camera.setBlockData(cameraFacing,false);
             inventory[0]=item;
             var place=new BlockPlaceEvent(camera,before,camera.getRelative(BlockFace.DOWN),item,player,true,EquipmentSlot.HAND);
             getServer().getPluginManager().callEvent(place);check(!place.isCancelled(),"camera placement");
+            stage=21;
+        } else if(stage==21) {
+            // Identity/pose are committed on the next tick after final protection listeners finish.
             verifyCameraPose();
             world.getBlockAt(baseX+5,baseY,baseZ).setType(Material.REDSTONE_BLOCK);
             stage=2;
@@ -176,8 +182,9 @@ public final class ExamplesProbe extends JavaPlugin {
         Dispenser state=(Dispenser)camera.getState();
         Float yaw=state.getPersistentDataContainer().get(CAMERA_YAW,PersistentDataType.FLOAT);
         Float pitch=state.getPersistentDataContainer().get(CAMERA_PITCH,PersistentDataType.FLOAT);
-        check(yaw!=null&&Math.abs(yaw-37)<.001&&pitch!=null&&Math.abs(pitch+25)<.001,
-                "camera exact yaw/pitch survives capture and restart");
+        check(((Directional)state.getBlockData()).getFacing()==BlockFace.NORTH
+                        &&yaw!=null&&Math.abs(yaw-180)<.001&&pitch!=null&&Math.abs(pitch)<.001,
+                "camera canonical north-facing pose survives capture and restart");
     }
     private List<ItemDisplay> nativeDisplays(Location near) {
         return world.getEntitiesByClass(ItemDisplay.class).stream()

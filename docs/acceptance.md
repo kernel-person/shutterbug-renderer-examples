@@ -1,5 +1,11 @@
 # Acceptance checklist
 
+## Current camera contract — six-way demo fix (2026-10-17)
+
+The camera now keeps vanilla dispenser placement facing toward its placer, with only north, south, east, west, straight up and straight down supported. The saved pose, optional lens, photo and flash must agree in each direction. Legacy exact-angle tags are normalized to the live dispenser facing on load without replacing the camera identity or inventory. The steep/diagonal checks below describe older builds, not the current aiming contract.
+
+Pending human checks on the exact new build: place from all six sides, verify lens/photo/flash alignment and unobstructed optics, collect the photo, restart with stored inventory, and check canceled placement with the server's protection plugin. Paper 26.2's flash uses white color data; older no-data flash APIs remain supported. Unit tests do not establish visible client appearance. No client is launched by the automated checks.
+
 ## Examples 1.1.1 — camera flash and recording guide (2026-10-01)
 
 See [patch verification](release-1.1.1-evidence.md) and the [recording guide](recording-guide.md). The pack stays at 1.1.0. Verify a visible single flash on an accepted redstone request, no flash during cooldown or a full inventory, then successful photo pickup. Enable client particles. Check steep and diagonal camera angles. This client check is pending; unit tests cannot establish appearance. No live server was updated by this patch.

@@ -3,6 +3,7 @@ package io.github.kernelperson.pov;
 import ke.ric.renderer.api.*;
 import java.time.Duration;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.*;
 import org.bukkit.Location;
 import org.bukkit.plugin.Plugin;
@@ -20,6 +21,12 @@ final class PovCapture implements AutoCloseable {
     private boolean busy;
     private volatile boolean closed;
     PovCapture(Plugin plugin){this.plugin=plugin;}
+    static boolean supportsTargetExclusions() {
+        try {
+            CaptureRequest.class.getConstructor(Location.class,double.class,RenderSettings.class,int.class,Set.class);
+            return true;
+        }catch(NoSuchMethodException unavailable){return false;}
+    }
     static boolean loaded(Location eye) {
         if(eye.getWorld()==null)return false;
         for(int x=(eye.getBlockX()-16)>>4;x<=((eye.getBlockX()+16)>>4);x++)
@@ -27,7 +34,7 @@ final class PovCapture implements AutoCloseable {
                 if(!eye.getWorld().isChunkLoaded(x,z))return false;
         return true;
     }
-    void start(Location eye,BooleanSupplier valid,Consumer<byte[]> success,Runnable failure) {
+    void start(Location eye,UUID target,BooleanSupplier valid,Consumer<byte[]> success,Runnable failure) {
         if(closed||busy)throw new IllegalStateException("Only one pipeline is permitted");
         if(!valid.getAsBoolean()||!loaded(eye)){failure.run();return;}
         var service=plugin.getServer().getServicesManager().load(RendererService.class);
@@ -38,7 +45,7 @@ final class PovCapture implements AutoCloseable {
             if(client==null||!client.active()){if(client!=null)client.close();client=service.createClient(plugin);}
             RendererClient owner=client;
             timeout=plugin.getServer().getScheduler().runTaskLater(plugin,fail,600);
-            owner.capture(new CaptureRequest(eye.clone(),16,SETTINGS,2)).whenComplete((scene,error)->onMain(()->{
+            owner.capture(new CaptureRequest(eye.clone(),16,SETTINGS,2,Set.of(target))).whenComplete((scene,error)->onMain(()->{
                 if(!current(token,valid)){if(token==epoch)fail.run();return;}
                 if(error!=null||owner!=client||!owner.active()||!loaded(eye)){fail.run();return;}
                 try {

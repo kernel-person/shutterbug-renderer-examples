@@ -3,7 +3,6 @@ package io.github.kernelperson.camera;
 import ke.ric.renderer.api.*;
 import org.bukkit.*;
 import org.bukkit.block.*;
-import org.bukkit.block.data.Directional;
 import org.bukkit.command.*;
 import org.bukkit.entity.Player;
 import org.bukkit.event.*;
@@ -41,7 +40,7 @@ public final class RedstoneCameraPlugin extends JavaPlugin implements Listener {
         var meta=item.getItemMeta();meta.setDisplayName("Redstone Camera");
         meta.getPersistentDataContainer().set(tag,PersistentDataType.STRING,"camera-item");
         item.setItemMeta(meta);player.getInventory().setItem(slot,item);
-        player.sendMessage("Placement remembers your exact look angle (including up/down). Pulse adjacent redstone; photos appear inside.");
+        player.sendMessage("Place the camera facing you like a dispenser: north, south, east, west, up or down. Pulse adjacent redstone; photos appear inside.");
         return true;
     }
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true)
@@ -51,16 +50,13 @@ public final class RedstoneCameraPlugin extends JavaPlugin implements Listener {
         if(!(event.getBlockPlaced().getState() instanceof Dispenser dispenser)) return;
         if(cameras.size()>=256) { event.setCancelled(true);event.getPlayer().sendMessage("Example camera limit reached (256 loaded cameras).");return; }
         Block block=event.getBlockPlaced();var placed=block.getBlockData();
-        Location view=event.getPlayer().getEyeLocation();
-        BlockFace face=event.getPlayer().getFacing();
         // Final protection listeners must finish before identity or transient visuals exist.
         getServer().getScheduler().runTask(this,()->{
             if(event.isCancelled()||!event.canBuild()||!block.getWorld().isChunkLoaded(block.getX()>>4,block.getZ()>>4)
                     ||block.getType()!=Material.DISPENSER||!Objects.equals(placed,block.getBlockData())||cameras.size()>=256)return;
             if(!(block.getState() instanceof Dispenser current))return;
-            Directional data=(Directional)current.getBlockData();data.setFacing(face);current.setBlockData(data);
             String id=UUID.randomUUID().toString();current.getPersistentDataContainer().set(tag,PersistentDataType.STRING,id);
-            new CameraPose(view.getYaw(),view.getPitch()).save(current);
+            CameraPose.read(current).save(current);
             current.update(true,false);remember(block,id);
         });
     }
@@ -74,7 +70,11 @@ public final class RedstoneCameraPlugin extends JavaPlugin implements Listener {
         for(BlockState state:chunk.getTileEntities()) if(state instanceof Dispenser dispenser) {
             String id=dispenser.getPersistentDataContainer().get(tag,PersistentDataType.STRING);
             if(id!=null) {
-                try { UUID.fromString(id); if(cameras.size()<256) remember(state.getBlock(),id); }
+                try { UUID.fromString(id); if(cameras.size()<256) {
+                    // Migrate exact-angle saves to the live six-way facing, preserving identity/storage.
+                    CameraPose.read(dispenser).save(dispenser);dispenser.update(true,false);
+                    remember(state.getBlock(),id);
+                } }
                 catch(IllegalArgumentException ignored) { getLogger().warning("Ignored invalid camera identity."); }
             }
         }
@@ -133,7 +133,15 @@ public final class RedstoneCameraPlugin extends JavaPlugin implements Listener {
         },message->feedback(camera,false));
         // A one-shot client effect, outside the optics. No entities, light blocks,
         // delayed cleanup or resource-pack changes; acceptance is not completion.
-        if(accepted) camera.block().getWorld().spawnParticle(Particle.FLASH,lens,1,0,0,0,0);
+        if(accepted) try {
+            // Paper 26.2 requires Color; older Bukkit APIs declare Void for this particle.
+            if(Particle.FLASH.getDataType()==Color.class)
+                camera.block().getWorld().spawnParticle(Particle.FLASH,lens,1,0,0,0,0,Color.WHITE);
+            else camera.block().getWorld().spawnParticle(Particle.FLASH,lens,1,0,0,0,0);
+        } catch(RuntimeException failure) {
+            // A cosmetic compatibility failure must not interrupt an already accepted render.
+            getLogger().warning("Camera flash could not be displayed; capture continues.");
+        }
     }
     private void feedback(CameraTarget camera,boolean success) {
         if(camera.valid()) camera.block().getWorld().playSound(camera.block().getLocation(),
