@@ -6,7 +6,8 @@ depend: [ShutterBugRenderer]
 description: Public rendered viewpoints on shared photographable maps. Not screen sharing or recording.
 commands:
   pov:
-    description: /pov <player>, /pov stop, /pov monitor, /pov demo (self-target shorthand)
+    description: /pov <player>, /pov stop, /pov monitor, /pov demo [updates-per-second] (self; shared rate 1-20 until restart)
+    usage: /pov <player> | /pov stop | /pov monitor | /pov demo [updates-per-second]
     permission: rendererexamples.pov
 permissions:
   rendererexamples.pov:

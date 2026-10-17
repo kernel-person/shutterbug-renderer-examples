@@ -12,11 +12,103 @@ import org.bukkit.inventory.*;
 import org.bukkit.inventory.meta.MapMeta;
 import org.bukkit.map.*;
 import org.bukkit.plugin.RegisteredServiceProvider;
+import org.bukkit.scheduler.BukkitScheduler;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class SharedPovTest {
+    @Test void demoRateChangesTheSharedCadenceAndPlainDemoKeepsIt() throws Exception {
+        var f=new Fixture();f.command("Other");var other=f.active();
+        f.loop.complete(other,other.started()+10,new byte[16384]);
+        f.command("demo","20");
+        assertEquals(f.owner,f.bindings.get(f.owner).target());
+        var self=f.active();assertNotNull(self);f.loop.complete(self,self.started()+10,new byte[16384]);
+        assertNull(f.loop.begin(self.started()+49));
+        var next=f.loop.begin(self.started()+50);assertNotNull(next,"20/sec needs a 50ms cadence");
+        f.command("demo");assertTrue(f.loop.current(next),"plain demo retains rate and healthy active ticket");
+        f.loop.complete(next,next.started()+10,new byte[16384]);
+        assertNotNull(f.loop.begin(next.started()+50),"plain demo must not restore the default rate");
+        verify(f.player,atLeastOnce()).sendMessage(contains("20 updates/second per target"));
+        verify(f.player,atLeastOnce()).sendMessage(contains("all POV feeds until restart"));
+    }
+
+    @Test void changingRateNeverCancelsHealthyActiveWorkOrAcceptsItsStaleCallback() throws Exception {
+        var f=new Fixture();f.command("demo");var active=f.active();
+        f.command("demo","1");assertTrue(f.loop.current(active));assertSame(active,f.active());
+        verify(f.capture,never()).cancel();verify(f.capture,times(1)).start(any(),eq(f.owner),any(),any(),any());
+        f.loop.complete(active,active.started()+100,new byte[16384]);
+        assertNull(f.loop.begin(active.started()+999));
+        var next=f.loop.begin(active.started()+1_000);assertNotNull(next);
+        assertFalse(f.loop.complete(active,next.started(),new byte[16384]));assertTrue(f.loop.current(next));
+        f.command("demo","20");assertTrue(f.loop.current(next));
+        f.loop.complete(next,next.started()+10,new byte[16384]);
+        assertNotNull(f.loop.begin(next.started()+50),"new cadence applies after the active frame completes");
+    }
+
+    @Test void rateChangesPreserveOutstandingFailureCooldownAndFailureCount() throws Exception {
+        var f=new Fixture();f.command("demo");var active=f.active();long start=active.started();
+        assertTrue(f.loop.complete(active,start+10,new byte[16384]));var completed=f.loop.frame(f.owner);
+        active=f.loop.begin(start+250);assertNotNull(active);
+        f.loop.failed(active,start+260);
+        f.command("demo","20");assertNull(f.active());
+        assertSame(completed,f.loop.frame(f.owner),"failure and rate change retain the last completed frame");
+        assertNull(f.loop.begin(start+2_259),"rate must not shorten backoff even when an older frame exists");
+        var retry=f.loop.begin(start+2_260);assertNotNull(retry);
+        f.loop.failed(retry,start+2_270);f.command("demo","1");
+        assertNull(f.loop.begin(start+6_269));assertNotNull(f.loop.begin(start+6_270));
+    }
+
+    @Test void invalidSyntaxAndRatesLeaveBindingsFramesTicketsAndCadenceUnchanged() throws Exception {
+        for(String[] invalid:List.of(new String[]{"demo","0"},new String[]{"demo","21"},
+                new String[]{"demo","-1"},new String[]{"demo","1.5"},new String[]{"demo","fast"},
+                new String[]{"demo","2147483648"},new String[]{"demo","4","extra"},
+                new String[]{"Other","4"})) {
+            var f=new Fixture();f.command("demo");var active=f.active();var binding=f.bindings.get(f.owner);
+            f.command(invalid);assertSame(binding,f.bindings.get(f.owner));assertTrue(f.loop.current(active));
+            verify(f.capture,never()).cancel();
+            f.loop.complete(active,active.started()+10,new byte[16384]);var frame=f.loop.frame(f.owner);
+            f.command(invalid);assertSame(frame,f.loop.frame(f.owner));
+            assertNull(f.loop.begin(active.started()+249));assertNotNull(f.loop.begin(active.started()+250));
+            verify(f.player,atLeastOnce()).sendMessage(contains("1-20"));
+        }
+    }
+
+    @Test void unauthorizedAndRejectedSelectionsCannotChangeRateOrActiveBinding() throws Exception {
+        for(String reason:List.of("permission","visibility","inventory","save")) {
+            var f=new Fixture();f.command("Other");var active=f.active();var binding=f.bindings.get(f.owner);
+            switch(reason) {
+                case "permission"->when(f.player.hasPermission(PovAccess.PERMISSION)).thenReturn(false);
+                case "visibility"->when(f.player.canSee(f.player)).thenReturn(false);
+                case "inventory"->{when(f.inventory.getContents()).thenReturn(new ItemStack[0]);when(f.inventory.firstEmpty()).thenReturn(-1);}
+                case "save"->{var field=AdminPovPlugin.class.getDeclaredField("store");field.setAccessible(true);
+                    doThrow(new java.io.IOException("test rejection")).when((BindingStore)field.get(f.plugin)).save(any());}
+            }
+            f.command("demo","20");assertEquals(binding,f.bindings.get(f.owner),reason);assertTrue(f.loop.current(active),reason);
+            f.loop.complete(active,active.started()+10,new byte[16384]);
+            assertNull(f.loop.begin(active.started()+249),reason);assertNotNull(f.loop.begin(active.started()+250),reason);
+            verify(f.capture,never()).cancel();
+        }
+    }
+
+    @Test void schedulerChecksEveryTickButPeriodicMapBroadcastsRemainEveryFiveTicks(@TempDir java.nio.file.Path data) throws Exception {
+        var f=new Fixture();var scheduler=mock(BukkitScheduler.class);
+        when(f.server.getScheduler()).thenReturn(scheduler);
+        when(f.server.getPluginManager()).thenReturn(mock(org.bukkit.plugin.PluginManager.class));
+        doNothing().when(f.plugin).saveDefaultConfig();doReturn(data.toFile()).when(f.plugin).getDataFolder();
+        doReturn(new YamlConfiguration()).when(f.plugin).getConfig();doReturn("RendererAdminPov").when(f.plugin).getName();
+        f.plugin.onEnable();
+        var actions=org.mockito.ArgumentCaptor.forClass(Runnable.class);
+        verify(scheduler).runTaskTimer(eq(f.plugin),actions.capture(),eq(1L),eq(1L));
+        Runnable processing=actions.getValue();
+        verify(scheduler).runTaskTimer(eq(f.plugin),actions.capture(),eq(1L),eq(5L));
+        Runnable status=actions.getValue();clearInvocations(f.player);
+        for(int i=0;i<20;i++)processing.run();
+        verify(f.player,never()).sendMap(any());status.run();verify(f.player).sendMap(f.view);
+    }
+
     @Test void normalAndDemoCommandsSharePhotographablePixelsForEveryViewer() throws Exception {
         for(String selection:List.of("demo","Self","Other")) {
             var f=new Fixture();MapRenderer receiver=f.renderer();f.command(selection);
@@ -165,7 +257,7 @@ class SharedPovTest {
             bindings.put(owner,new BindingStore.Binding(owner,7,owner));attach();
         }
         void set(String name,Object value) throws Exception {Field field=AdminPovPlugin.class.getDeclaredField(name);field.setAccessible(true);field.set(plugin,value);}
-        void command(String value){plugin.onCommand(player,mock(Command.class),"pov",new String[]{value});}
+        void command(String... values){plugin.onCommand(player,mock(Command.class),"pov",values);}
         void tick() throws Exception {var tick=AdminPovPlugin.class.getDeclaredMethod("tick");tick.setAccessible(true);tick.invoke(plugin);}
         void attach() throws Exception {var attach=AdminPovPlugin.class.getDeclaredMethod("attach",UUID.class,MapView.class);attach.setAccessible(true);attach.invoke(plugin,owner,view);}
         MapRenderer renderer(){assertEquals(1,renderers.size());return renderers.getFirst();}

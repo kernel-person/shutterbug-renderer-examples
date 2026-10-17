@@ -40,16 +40,25 @@ public final class AdminPovPlugin extends JavaPlugin implements Listener {
         monitors=new PovMonitors(this,getConfig().getBoolean("native-models",false));
         getServer().getPluginManager().registerEvents(this,this);
         getServer().getPluginManager().registerEvents(monitors,this);monitors.restore();
-        getServer().getScheduler().runTaskTimer(this,this::tick,1,5);
+        getServer().getScheduler().runTaskTimer(this,this::tick,1,1);
+        getServer().getScheduler().runTaskTimer(this,this::refreshOwners,1,5);
     }
     @Override public boolean onCommand(CommandSender sender,Command command,String label,String[] args) {
         if(!(sender instanceof Player player)){sender.sendMessage("Use /pov in game.");return true;}
         UUID owner=player.getUniqueId();
         if(!player.hasPermission(PovAccess.PERMISSION))return true;
-        if(args.length!=1){player.sendMessage("/pov <player> | /pov stop | /pov monitor | /pov demo");return true;}
+        if(args.length<1||args.length>2||(args.length==2&&!args[0].equalsIgnoreCase("demo"))) {
+            player.sendMessage("/pov <player> | /pov stop | /pov monitor | /pov demo [updates-per-second: 1-20]");return true;
+        }
+        Integer rate=null;
+        if(args.length==2) {
+            try {rate=Integer.parseInt(args[1]);}
+            catch(NumberFormatException invalid){player.sendMessage("Use /pov demo [updates-per-second: 1-20], a whole number.");return true;}
+            if(rate<1||rate>20){player.sendMessage("Use /pov demo [updates-per-second: 1-20], a whole number.");return true;}
+        }
         if(args[0].equalsIgnoreCase("stop")) {
             var old=bindings.get(owner);if(old!=null&&!change(new BindingStore.Binding(owner,old.mapId(),null),player))return true;
-            tick();player.sendMessage("POV stopped. Your receivers are blank.");return true;
+            tick();refreshOwners();player.sendMessage("POV stopped. Your receivers are blank.");return true;
         }
         if(args[0].equalsIgnoreCase("monitor")) {
             if(!authorized(player)){player.sendMessage("First select a visible online player using /pov <player>.");return true;}
@@ -71,10 +80,12 @@ public final class AdminPovPlugin extends JavaPlugin implements Listener {
         MapView view=old==null?Bukkit.createMap(player.getWorld()):views.get(owner);
         if(view==null){player.sendMessage("Saved receiver map is unavailable; ask an operator to restore map data.");return true;}
         if(!change(new BindingStore.Binding(owner,view.getId(),target.getUniqueId()),player))return true;
+        if(rate!=null)loop.updatesPerSecond(rate);
         if(old==null)attach(owner,view);
         if(!hasReceiver(player,view.getId()))player.getInventory().addItem(receiver(owner));
-        tick();
-        player.sendMessage("PUBLIC POV selected: "+target.getName()+". Anyone can see and photograph your receiver/monitor, including copies. Hold the map or watch your monitor. Periodic world snapshots; no HUD, chat or audio.");return true;
+        tick();refreshOwners();
+        player.sendMessage("PUBLIC POV selected: "+target.getName()+". Anyone can see and photograph your receiver/monitor, including copies. Hold the map or watch your monitor. Periodic world snapshots; no HUD, chat or audio.");
+        player.sendMessage("POV target: "+loop.updatesPerSecond()+" updates/second per target, shared by all POV feeds until restart. Best-effort; one pipeline, no frame queue.");return true;
     }
     private boolean change(BindingStore.Binding replacement,Player player) {
         var old=bindings.put(replacement.owner(),replacement);
@@ -140,7 +151,6 @@ public final class AdminPovPlugin extends JavaPlugin implements Listener {
                 }
             }
         }
-        refreshOwners(); // demand loss and stale status also clear/update handheld client caches
     }
     private void refreshOwners() {
         for(var entry:views.entrySet()){Player owner=getServer().getPlayer(entry.getKey());if(owner!=null&&owner.isOnline())owner.sendMap(entry.getValue());}

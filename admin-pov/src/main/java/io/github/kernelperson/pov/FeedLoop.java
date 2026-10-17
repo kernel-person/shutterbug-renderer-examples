@@ -12,8 +12,17 @@ final class FeedLoop<K> {
     }
     private static final class Feed {long next;int failures;Frame frame;}
     private final LinkedHashMap<K,Feed> feeds=new LinkedHashMap<>();
+    private int updatesPerSecond=4;
     private long sequence;
     private Ticket<K> pending;
+    int updatesPerSecond(){return updatesPerSecond;}
+    void updatesPerSecond(int rate) {
+        if(rate<1||rate>20)throw new IllegalArgumentException("POV updates/second must be 1-20");
+        updatesPerSecond=rate;
+        for(Feed feed:feeds.values())if(feed.failures==0&&feed.frame!=null)
+            feed.next=feed.frame.captured()+intervalMillis(); // failure cooldowns and active tickets are untouched
+    }
+    private long intervalMillis(){return (1_000L+updatesPerSecond-1)/updatesPerSecond;}
     void demand(Collection<K> requested) {
         Set<K> selected=new LinkedHashSet<>();for(K key:requested){selected.add(key);if(selected.size()==2)break;}
         for(K key:List.copyOf(feeds.keySet()))if(!selected.contains(key)){invalidate(key);feeds.remove(key);}
@@ -32,7 +41,7 @@ final class FeedLoop<K> {
     boolean complete(Ticket<K> ticket,long now,byte[] pixels) {
         if(!current(ticket))return false;
         Feed feed=feeds.get(ticket.target());feed.frame=new Frame(pixels,ticket.started());
-        feed.failures=0;feed.next=now+1_000;pending=null;return true;
+        feed.failures=0;feed.next=ticket.started()+intervalMillis();pending=null;return true;
     }
     void failed(Ticket<K> ticket,long now) {
         if(!current(ticket))return;
