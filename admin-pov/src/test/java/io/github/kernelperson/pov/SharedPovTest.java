@@ -16,26 +16,31 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-class PublicDemoTest {
-    @Test void demoCommandPublishesOnlySelfAndWarnsThatCopiesArePublic() throws Exception {
-        var f=new Fixture();f.command("demo");
-        assertFalse(f.renderer().isContextual(), "explicit self demo must be photographable");
-        assertEquals(f.owner,f.bindings.get(f.owner).target());
-        verify(f.player).sendMessage(contains("PUBLIC"));
-        verify(f.server,never()).getPlayerExact("demo");
-        assertArrayEquals(f.completed((byte)42),f.render(f.stranger));
+class SharedPovTest {
+    @Test void normalAndDemoCommandsSharePhotographablePixelsForEveryViewer() throws Exception {
+        for(String selection:List.of("demo","Self","Other")) {
+            var f=new Fixture();MapRenderer receiver=f.renderer();f.command(selection);
+            assertFalse(f.renderer().isContextual(),selection+" must be photographable");
+            assertSame(receiver,f.renderer(),"selection never swaps public/private renderers");
+            assertEquals(selection.equals("Other")?f.otherId:f.owner,f.bindings.get(f.owner).target());
+            verify(f.player).sendMessage(contains("PUBLIC"));
+            byte[] pixels=f.completed((byte)42);
+            assertArrayEquals(pixels,f.render(f.player));
+            assertArrayEquals(pixels,f.render(f.stranger),"copied or watched maps are public without viewer permission");
+            if(selection.equals("demo"))verify(f.server,never()).getPlayerExact("demo");
+        }
     }
 
-    @Test void selectingAnotherPlayerAlwaysReplacesPublicRendererWithPrivateOne() throws Exception {
-        var f=new Fixture();f.command("demo");var old=f.active();assertTrue(f.loop.current(old));
+    @Test void changingTargetsKeepsPublicRendererButRejectsTheOldCompletion() throws Exception {
+        var f=new Fixture();f.command("demo");var old=f.active();MapRenderer receiver=f.renderer();
         f.command("Other");
-        assertTrue(f.renderer().isContextual());
+        assertSame(receiver,f.renderer());assertFalse(f.renderer().isContextual());
         assertEquals(f.otherId,f.bindings.get(f.owner).target());
-        assertFalse(f.loop.complete(old,AdminPovPlugin.now(),new byte[16384]),"old public completion cannot republish after target change");
-        assertEquals(119,f.render(f.stranger)[500]);
+        assertFalse(f.loop.complete(old,AdminPovPlugin.now(),new byte[16384]),"old completion cannot republish after target change");
+        assertArrayEquals(f.completed((byte)66),f.render(f.stranger));
     }
 
-    @Test void publicDemoKeepsNoFeedAndStaleStatusWithoutStartingAnotherRender() throws Exception {
+    @Test void sharedReceiverKeepsNoFeedAndStaleStatusWithoutStartingAnotherRender() throws Exception {
         var f=new Fixture();f.command("demo");
         assertFalse(f.renderer().isContextual());f.loop.clear();
         assertEquals(119,f.render(f.stranger)[500]);assertTrue(f.statuses.contains("NO FEED"));
@@ -44,21 +49,28 @@ class PublicDemoTest {
         assertEquals(42,f.render(f.stranger)[5_000]);assertTrue(f.statuses.contains("STALE"));
     }
 
-    @Test void demoStillRequiresTheNormalAdminPermission() throws Exception {
-        var f=new Fixture();when(f.player.hasPermission(PovAccess.PERMISSION)).thenReturn(false);
-        f.command("demo");assertTrue(f.renderer().isContextual());
-        assertEquals(119,f.render(f.stranger)[500]);
-        verify(f.player,never()).sendMessage(contains("PUBLIC"));
+    @Test void publicViewingDoesNotGrantControlPermissionOrBypassTargetVisibility() throws Exception {
+        for(String selection:List.of("demo","Self","Other")) {
+            var f=new Fixture();when(f.player.hasPermission(PovAccess.PERMISSION)).thenReturn(false);
+            f.command(selection);assertNull(f.active());assertEquals(f.owner,f.bindings.get(f.owner).target());
+            verify(f.player,never()).sendMessage(contains("PUBLIC"));
+        }
+        var f=new Fixture();when(f.player.canSee(f.other)).thenReturn(false);
+        f.command("Other");assertNull(f.active());assertEquals(f.owner,f.bindings.get(f.owner).target());
+        verify(f.player).sendMessage("That player is not available to you.");
     }
 
-    @Test void demoMonitorCommandDoesNotPromiseOwnerOnlyViewing() throws Exception {
-        var f=new Fixture();f.set("monitors",mock(PovMonitors.class));f.command("demo");
-        f.command("monitor");verify(f.player).sendMessage(contains("PUBLIC self-view monitor"));
+    @Test void everyMonitorCommandWarnsThatItsSharedScreenIsPublic() throws Exception {
+        for(String selection:List.of("demo","Other")) {
+            var f=new Fixture();f.set("monitors",mock(PovMonitors.class));f.command(selection);
+            f.command("monitor");verify(f.player).sendMessage(contains("PUBLIC monitor"));
+        }
     }
 
-    @Test void stopPermissionLossLogoutProviderRemovalAndShutdownRevokePublicMode() throws Exception {
+    @Test void feedInvalidationClearsSharedPixelsWithoutChangingRendererMode() throws Exception {
         for(String reason:List.of("stop","permission","visibility","offline","logout","teleport","world","provider","shutdown")) {
-            var f=new Fixture();f.command("demo");assertFalse(f.renderer().isContextual());f.completed((byte)42);
+            var f=new Fixture();f.command("demo");MapRenderer receiver=f.renderer();f.completed((byte)42);
+            assertEquals(42,f.render(f.stranger)[500]);
             switch(reason) {
                 case "stop"->f.command("stop");
                 case "permission"->{when(f.player.hasPermission(PovAccess.PERMISSION)).thenReturn(false);f.tick();}
@@ -70,8 +82,26 @@ class PublicDemoTest {
                 case "provider"->{var registration=mock(RegisteredServiceProvider.class);when(registration.getService()).thenReturn(RendererService.class);f.plugin.providerRemoved(new ServiceUnregisterEvent(registration));}
                 case "shutdown"->f.plugin.onDisable();
             }
-            assertTrue(f.renderer().isContextual(),reason+" must remove the cached public canvas");
+            assertSame(receiver,f.renderer(),reason+" clears feed state, never changes public/private mode");
+            assertFalse(f.renderer().isContextual());
             assertEquals(119,f.render(f.stranger)[500],reason);
+            assertTrue(f.statuses.contains("NO FEED"),reason);
+        }
+    }
+
+    @Test void stopProviderReloadAndShutdownDiscardLateCaptureCompletions() throws Exception {
+        for(String reason:List.of("stop","provider","shutdown")) {
+            var f=new Fixture();f.command("Other");
+            org.mockito.ArgumentCaptor<java.util.function.Consumer<byte[]>> success=org.mockito.ArgumentCaptor.captor();
+            verify(f.capture).start(any(),eq(f.otherId),any(),success.capture(),any());
+            switch(reason) {
+                case "stop"->f.command("stop");
+                case "provider"->{var registration=mock(RegisteredServiceProvider.class);when(registration.getService()).thenReturn(RendererService.class);f.plugin.providerRemoved(new ServiceUnregisterEvent(registration));}
+                case "shutdown"->f.plugin.onDisable();
+            }
+            byte[] late=new byte[16384];Arrays.fill(late,(byte)66);success.getValue().accept(late);
+            assertEquals(119,f.render(f.stranger)[500],reason+" must reject obsolete asynchronous pixels");
+            assertNull(f.loop.frame(f.otherId));
         }
     }
 
@@ -87,11 +117,12 @@ class PublicDemoTest {
         f.tick();assertEquals(0,f.loop.size(),"a spectator cannot retain owner capture demand");
     }
 
-    @Test void restoredReceiverStartsPrivateEvenAfterItsPriorInstanceUsedDemo() throws Exception {
+    @Test void freshPluginInstanceStartsPublicWithoutPreviousInstancePixels() throws Exception {
         var first=new Fixture();first.command("demo");first.completed((byte)42);
         var restored=new Fixture(first.owner);restored.attach();
-        assertTrue(restored.renderer().isContextual());
+        assertFalse(restored.renderer().isContextual());
         assertEquals(119,restored.render(restored.stranger)[500]);
+        restored.command("Self");assertArrayEquals(restored.completed((byte)66),restored.render(restored.stranger));
     }
 
     private static final class Fixture {
@@ -100,6 +131,7 @@ class PublicDemoTest {
         final Server server=mock(Server.class);
         final Player player=mock(Player.class),stranger=mock(Player.class),other=mock(Player.class);
         final PlayerInventory inventory=mock(PlayerInventory.class);
+        final PovCapture capture=mock(PovCapture.class);
         final MapView view=mock(MapView.class);
         final List<MapRenderer> renderers=new ArrayList<>();
         final Map<MapRenderer,byte[]> canvases=new IdentityHashMap<>();
@@ -110,12 +142,11 @@ class PublicDemoTest {
         Fixture(UUID owner) throws Exception {
             this.owner=owner;
             set("bindings",bindings);set("views",new HashMap<UUID,MapView>());set("loop",loop);
-            // New opt-in state is deliberately never part of persisted bindings.
-            set("demoOwners",new HashSet<UUID>());
-            set("store",mock(BindingStore.class));set("capture",mock(PovCapture.class));
+            set("store",mock(BindingStore.class));set("capture",capture);
             doReturn(server).when(plugin).getServer();
             when(server.getPlayer(owner)).thenReturn(player);when(server.getPlayer(otherId)).thenReturn(other);
             when(server.getPlayerExact("Other")).thenReturn(other);
+            when(server.getPlayerExact("Self")).thenReturn(player);
             when(player.getUniqueId()).thenReturn(owner);when(other.getUniqueId()).thenReturn(otherId);
             when(stranger.getUniqueId()).thenReturn(UUID.randomUUID());
             when(player.isOnline()).thenReturn(true);when(other.isOnline()).thenReturn(true);

@@ -78,10 +78,16 @@ class PovPipelineTest {
         verify(client,never()).submit(any());verify(client).close();
         assertEquals(1,failures.get(),"state owner must be notified so its sole ticket cannot get stuck");assertEquals(0,delivered.get());
     }
-    @Test void providerReloadAndCloseDiscardQueuedCompletions() {
+    @Test void providerReloadDiscardsQueuedCompletions() {
         start();captured.complete(mock(Scene.class));drain();
         rendered.complete(mock(RenderResult.class));capture.cancel();drain();
         verify(task).cancel();verify(client).close();assertEquals(0,delivered.get());
+    }
+    @Test void shutdownDiscardsQueuedCompletionsAndRejectsFutureCaptures() {
+        start();captured.complete(mock(Scene.class));drain();
+        rendered.complete(mock(RenderResult.class));capture.close();drain();
+        verify(task).cancel();verify(client).close();assertEquals(0,delivered.get());
+        assertThrows(IllegalStateException.class,this::start);
     }
     @Test void timeoutCancelsNeverCompletingCaptureAndIgnoresItsLateResult() {
         start();deadlines.getFirst().run();captured.complete(mock(Scene.class));drain();

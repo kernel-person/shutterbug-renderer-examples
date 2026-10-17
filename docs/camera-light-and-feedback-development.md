@@ -1,5 +1,7 @@
 # Camera lighting and public self-view feedback — development checks
 
+Historical evidence for the earlier private/public split. That POV behavior and its gray-map redaction policy are superseded: every current POV receiver is a shared public screen, and `/pov demo` is self-target shorthand only. The checks and hashes below describe earlier bytes, not acceptance of the current cleanup. See the [current contract](../README.md#admin-pov-monitor).
+
 2026-10-17. Local development changes; not a new commercial renderer release.
 
 ## Root causes

@@ -1,5 +1,7 @@
 # MCModels 17590 — draft-only media update
 
+Historical, unapplied copy: do not publish the owner-private POV wording below. It is superseded by the [current shared public-screen contract](../README.md#admin-pov-monitor) and [recording guide](recording-guide.md). This note does not change any marketplace listing or authorize publication.
+
 Prepared 2026-10-01. **Not applied to MCModels:** browser automation reported unsupported authentication and native Edge control was not approved. Preserve the existing description, price ($29.99 perpetual, three seats), downloads and draft/unsubmitted/non-purchasable state. This file is not evidence of a saved listing.
 
 Append the following section to the description. Replace each bracketed line with the actual video before submitting; these are editorial placeholders, not playable embeds or invented video URLs.

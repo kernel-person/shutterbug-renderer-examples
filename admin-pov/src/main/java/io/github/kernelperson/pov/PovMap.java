@@ -5,13 +5,13 @@ import java.util.function.Supplier;
 import org.bukkit.entity.Player;
 import org.bukkit.map.*;
 
-/** Explicitly public self-view only. Reads one completed frame; never starts a capture. */
-final class PublicDemoMap extends MapRenderer {
+/** Shared public canvas for every receiver and desk screen. Reads completed frames only. */
+final class PovMap extends MapRenderer {
     private final Supplier<FeedLoop.Frame> frame;
     private final LongSupplier clock;
     private Stamp delivered;
     private record Stamp(FeedLoop.Frame frame,boolean stale) {}
-    PublicDemoMap(Supplier<FeedLoop.Frame> frame,LongSupplier clock) {
+    PovMap(Supplier<FeedLoop.Frame> frame,LongSupplier clock) {
         super(false);this.frame=frame;this.clock=clock;
     }
     @SuppressWarnings("deprecation")

@@ -1,5 +1,7 @@
 # Four-example demo implementation plan
 
+Historical plan. The owner-private/contextual POV design below is superseded by the [shared public-screen contract](../README.md#admin-pov-monitor); command authority and owner controls remain, but displayed pixels are public.
+
 Approved user brief, 2026-09-29. Renderer 1.0.0, SDK v1.0.1, licensing, marketplace and all existing servers/worlds remain unchanged. Examples become 1.1.0; preserve prior release bytes and Kernel Person attribution.
 
 ### Task 1: Native artwork and existing examples

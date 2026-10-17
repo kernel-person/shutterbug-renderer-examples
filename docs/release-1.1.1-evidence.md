@@ -1,5 +1,7 @@
 # Examples 1.1.1 verification record
 
+Historical release evidence. Its cross-player privacy references describe the former POV design, superseded on the development branch by [shared public screens](../README.md#admin-pov-monitor). The recorded tests and hashes below do not verify current bytes.
+
 2026-10-01. Patch to the four-example 1.1.0 release: one camera flash on an accepted render request, plus a recording guide and draft media copy. Renderer 1.0.0, SDK v1.0.1, licensing and the byte-exact 1.1.0 resource pack are unchanged. Existing 1.1.0 archives are preserved.
 
 ## Verification status

@@ -66,7 +66,7 @@ class PovMonitorsTest {
         verify(f.frame,never()).remove();verify(f.base,never()).setType(any(),anyBoolean());
         f.monitors.close();verify(f.frame,never()).remove();
     }
-    @Test void strangerCannotRemoveOrWatchAnOwnersScreen() {
+    @Test void strangerCannotRemoveScreenOrCreateOwnerCaptureDemand() {
         var f=new Fixture(false);f.monitors.restore();when(f.player.getUniqueId()).thenReturn(UUID.randomUUID());
         when(f.player.isSneaking()).thenReturn(true);when(f.player.hasPermission(PovAccess.PERMISSION)).thenReturn(true);
         assertFalse(f.monitors.watching(f.player));

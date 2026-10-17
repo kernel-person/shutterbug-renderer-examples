@@ -18,8 +18,6 @@ import org.bukkit.plugin.java.JavaPlugin;
 public final class AdminPovPlugin extends JavaPlugin implements Listener {
     private final Map<UUID,BindingStore.Binding> bindings=new LinkedHashMap<>();
     private final Map<UUID,MapView> views=new HashMap<>();
-    // Deliberately transient: a restart always attaches the private renderer.
-    private final Set<UUID> demoOwners=new HashSet<>();
     private final FeedLoop<UUID> loop=new FeedLoop<>();
     private BindingStore store;
     private PovCapture capture;
@@ -47,10 +45,9 @@ public final class AdminPovPlugin extends JavaPlugin implements Listener {
     @Override public boolean onCommand(CommandSender sender,Command command,String label,String[] args) {
         if(!(sender instanceof Player player)){sender.sendMessage("Use /pov in game.");return true;}
         UUID owner=player.getUniqueId();
-        if(!player.hasPermission(PovAccess.PERMISSION)){revokeDemo(owner);return true;}
+        if(!player.hasPermission(PovAccess.PERMISSION))return true;
         if(args.length!=1){player.sendMessage("/pov <player> | /pov stop | /pov monitor | /pov demo");return true;}
         if(args[0].equalsIgnoreCase("stop")) {
-            revokeDemo(owner);
             var old=bindings.get(owner);if(old!=null&&!change(new BindingStore.Binding(owner,old.mapId(),null),player))return true;
             tick();player.sendMessage("POV stopped. Your receivers are blank.");return true;
         }
@@ -58,12 +55,9 @@ public final class AdminPovPlugin extends JavaPlugin implements Listener {
             if(!authorized(player)){player.sendMessage("First select a visible online player using /pov <player>.");return true;}
             if(player.getInventory().firstEmpty()<0){player.sendMessage("Make inventory space first.");return true;}
             player.getInventory().addItem(monitors.item(owner));
-            player.sendMessage(demoOwners.contains(owner)
-                    ?"PUBLIC self-view monitor: anyone can watch or photograph it. Sneak + right-click its screen to remove it."
-                    :"Place your monitor; sneak + right-click its screen to remove it. Only you can watch it.");return true;
+            player.sendMessage("PUBLIC monitor: anyone can watch or photograph it. Sneak + right-click your screen to remove it.");return true;
         }
-        boolean demo=args[0].equalsIgnoreCase("demo");
-        Player target=demo?player:getServer().getPlayerExact(args[0]);
+        Player target=args[0].equalsIgnoreCase("demo")?player:getServer().getPlayerExact(args[0]);
         if(!PovAccess.allowed(owner,player,target)){player.sendMessage("That player is not available to you.");return true;}
         Set<UUID> selected=new HashSet<>();
         for(var binding:bindings.values())if(!binding.owner().equals(owner)) {
@@ -77,13 +71,10 @@ public final class AdminPovPlugin extends JavaPlugin implements Listener {
         MapView view=old==null?Bukkit.createMap(player.getWorld()):views.get(owner);
         if(view==null){player.sendMessage("Saved receiver map is unavailable; ask an operator to restore map data.");return true;}
         if(!change(new BindingStore.Binding(owner,view.getId(),target.getUniqueId()),player))return true;
-        revokeDemo(owner);
-        if(demo)demoOwners.add(owner);
-        attach(owner,view);
+        if(old==null)attach(owner,view);
         if(!hasReceiver(player,view.getId()))player.getInventory().addItem(receiver(owner));
         tick();
-        if(demo)player.sendMessage("PUBLIC self-view demo: everyone can see and photograph this receiver/monitor, including copies. /pov stop restores private mode; existing photos remain public.");
-        else player.sendMessage("POV selected: "+target.getName()+". Hold the map or watch your monitor. Periodic world snapshots; no HUD, chat or audio.");return true;
+        player.sendMessage("PUBLIC POV selected: "+target.getName()+". Anyone can see and photograph your receiver/monitor, including copies. Hold the map or watch your monitor. Periodic world snapshots; no HUD, chat or audio.");return true;
     }
     private boolean change(BindingStore.Binding replacement,Player player) {
         var old=bindings.put(replacement.owner(),replacement);
@@ -94,23 +85,10 @@ public final class AdminPovPlugin extends JavaPlugin implements Listener {
     private void attach(UUID owner,MapView view) {
         for(var renderer:List.copyOf(view.getRenderers()))view.removeRenderer(renderer);
         view.setTrackingPosition(false);view.setUnlimitedTracking(false);view.setLocked(true);
-        var binding=bindings.get(owner);
-        if(demoOwners.contains(owner)&&binding!=null&&owner.equals(binding.target())) {
-            view.addRenderer(new PublicDemoMap(()->loop.frame(owner),AdminPovPlugin::now));
-        } else {
-            view.addRenderer(new PrivateMap(owner,p->!closed&&authorized(p)&&watching(p),()->{
-                var selected=bindings.get(owner);return selected==null||selected.target()==null?null:loop.frame(selected.target());
-            },AdminPovPlugin::now));
-        }
+        view.addRenderer(new PovMap(()->{
+            var selected=bindings.get(owner);return closed||selected==null||selected.target()==null?null:loop.frame(selected.target());
+        },AdminPovPlugin::now));
         views.put(owner,view);
-    }
-    private void revokeDemo(UUID owner) {
-        if(!demoOwners.remove(owner))return;
-        loop.invalidate(owner);
-        MapView view=views.get(owner);if(view!=null)attach(owner,view);
-    }
-    private void revokeDemos() {
-        for(UUID owner:List.copyOf(demoOwners))revokeDemo(owner);
     }
     ItemStack receiver(UUID owner) {
         MapView view=views.get(owner);if(view==null)throw new IllegalStateException("Missing owned receiver");
@@ -141,12 +119,6 @@ public final class AdminPovPlugin extends JavaPlugin implements Listener {
     }
     private void tick() {
         if(closed)return;
-        // Bukkit has no generic permission-change event; revoke before every five-tick refresh.
-        for(UUID id:List.copyOf(demoOwners)) {
-            Player owner=getServer().getPlayer(id);
-            var binding=bindings.get(id);
-            if(owner==null||!authorized(owner)||binding==null||!id.equals(binding.target()))revokeDemo(id);
-        }
         Set<UUID> demand=new LinkedHashSet<>();
         for(var binding:bindings.values()) {
             Player owner=getServer().getPlayer(binding.owner());
@@ -168,13 +140,12 @@ public final class AdminPovPlugin extends JavaPlugin implements Listener {
                 }
             }
         }
-        refreshOwners(); // permission loss and stale status also clear/update handheld client caches
+        refreshOwners(); // demand loss and stale status also clear/update handheld client caches
     }
     private void refreshOwners() {
         for(var entry:views.entrySet()){Player owner=getServer().getPlayer(entry.getKey());if(owner!=null&&owner.isOnline())owner.sendMap(entry.getValue());}
     }
     private void invalidate(UUID target) {
-        revokeDemo(target);
         loop.invalidate(target);if(active!=null&&!loop.current(active)){capture.cancel();active=null;}refreshOwners();
     }
     @EventHandler(priority=EventPriority.MONITOR,ignoreCancelled=true)
@@ -183,10 +154,10 @@ public final class AdminPovPlugin extends JavaPlugin implements Listener {
     @EventHandler public void logout(PlayerQuitEvent event){invalidate(event.getPlayer().getUniqueId());}
     @EventHandler public void providerRemoved(ServiceUnregisterEvent event) {
         if(event.getProvider().getService()!=RendererService.class)return;
-        revokeDemos();loop.clear();active=null;capture.cancel();refreshOwners();
+        loop.clear();active=null;capture.cancel();refreshOwners();
     }
     @Override public void onDisable() {
-        closed=true;revokeDemos();loop.clear();active=null;if(capture!=null)capture.close();
+        closed=true;loop.clear();active=null;if(capture!=null)capture.close();
         refreshOwners();if(monitors!=null)monitors.close();
     }
 }

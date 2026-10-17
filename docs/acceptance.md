@@ -1,5 +1,11 @@
 # Acceptance checklist
 
+## Current POV contract — shared public screens (2026-10-17)
+
+All receiver maps and desk screens are non-contextual, public and photographable, including copied maps and unauthorized viewers. `/pov demo` only selects self; `/pov YourExactPlayerName` and `/pov <other-player>` use the same renderer. Operator permission, target visibility, binding ownership and owner-only placement/removal remain enforced. Spectators cannot request or sustain captures. Verify shared completed pixels, stale/no-feed status, normal/demo equivalence, two-owner/shared-target demand, stale callbacks after stop/provider reload/shutdown and restart without persisted frame pixels. Actual client appearance and sustained timing remain separate operator checks; no client is launched by automation.
+
+Earlier references below to contextual ownership or copied-map privacy describe older release behavior, superseded by this public-display contract. They are historical evidence, not current privacy guarantees. See the [current README](../README.md#admin-pov-monitor) and [recording guide](recording-guide.md).
+
 ## Current camera contract — six-way demo fix (2026-10-17)
 
 The camera now keeps vanilla dispenser placement facing toward its placer, with only north, south, east, west, straight up and straight down supported. The saved pose, optional lens, photo and flash must agree in each direction. Legacy exact-angle tags are normalized to the live dispenser facing on load without replacing the camera identity or inventory. The steep/diagonal checks below describe older builds, not the current aiming contract.

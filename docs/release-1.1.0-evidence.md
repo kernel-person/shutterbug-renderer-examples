@@ -1,5 +1,7 @@
 # Examples 1.1.0 verification record
 
+Historical release evidence. Its owner-private POV behavior is superseded on the development branch by [shared public screens](../README.md#admin-pov-monitor); the recorded tests and hashes below do not verify current bytes.
+
 2026-09-29. Local implementation branch `codex/four-example-demo`, based on `b6cbcc777f641ef38fc9051f86023f2a3397936a`. The final package manifest records its exact committed source. No push, deployment, marketplace change or live-server update is part of this handoff.
 
 ## Automated evidence

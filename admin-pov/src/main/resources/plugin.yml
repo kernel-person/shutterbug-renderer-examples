@@ -3,10 +3,10 @@ version: 1.1.1
 main: io.github.kernelperson.pov.AdminPovPlugin
 api-version: '1.21'
 depend: [ShutterBugRenderer]
-description: Private rendered viewpoints, with explicit public self-view demo. Not screen sharing or recording.
+description: Public rendered viewpoints on shared photographable maps. Not screen sharing or recording.
 commands:
   pov:
-    description: /pov <player>, /pov stop, /pov monitor, /pov demo (public self-view)
+    description: /pov <player>, /pov stop, /pov monitor, /pov demo (self-target shorthand)
     permission: rendererexamples.pov
 permissions:
   rendererexamples.pov:

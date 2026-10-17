@@ -1,5 +1,7 @@
 # Camera light and public self-view demo implementation plan
 
+Historical implementation plan, superseded for POV by the [shared public-screen contract](../../../README.md#admin-pov-monitor). The private/public split, transient demo mode and gray redaction described below are no longer the current behavior; `/pov demo` is now only self-target shorthand.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Correct the black placed camera and allow an explicitly public self-view screen to create a photographic feedback tunnel.

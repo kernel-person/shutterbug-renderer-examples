@@ -1,6 +1,6 @@
 # Recording the four examples
 
-Examples **1.1.1**, Renderer **1.0.0**, public SDK **v1.0.1**. The resource pack remains **1.1.0**; the camera flash needs no pack change. These are shot instructions, not a claim that the latest build has passed client acceptance.
+For the current unreleased development branch, use the locally supplied SDK **v1.0.2-SNAPSHOT** and matching development provider described in the [README](../README.md). Published examples **1.1.1**, Renderer **1.0.0** and SDK **v1.0.1** downloads remain unchanged. The resource pack remains **1.1.0**. These are shot instructions, not a claim that the latest build has passed client acceptance.
 
 ## Prepare
 
@@ -29,15 +29,15 @@ A powered camera does not continuously shoot. Busy/cooldown/unavailable requests
 
 ## Admin POV — solo, without another account
 
-1. As an operator, run `/pov demo` for an explicitly **public**, photographable self-view. This selects only yourself and reuses your receiver map. Copies and nearby viewers can see it. For owner-private self-view instead, use `/pov YourExactPlayerName`; private screens are intentionally redacted in rendered photographs.
+1. As an operator, run `/pov demo` or `/pov YourExactPlayerName` for a photographable self-view. These commands behave identically; `/pov demo` is only self-target shorthand. Every POV receiver and monitor is **public**, including copied maps and nearby viewers. There is no private mode or viewer redaction.
 2. Hold the supplied map in the offhand so the rendered view and world can appear together. Slowly turn between two recognizably different scenes; pause for each snapshot to arrive.
 3. Run `/pov monitor`, place the desk monitor, and face its screen within 16 blocks with a clear line of sight. Keep holding the receiver if you turn away from the monitor, otherwise demand may stop.
 4. For the mirror-tunnel shot, look into your own public monitor and pause: each completed update includes the previous completed frame, not a recursive render. You can also photograph this public screen with the redstone camera. No frame queue or recording history is added.
-5. Run `/pov stop` to demonstrate the screen clearing and returning to private mode. Selecting any player, logout, teleport/world change, provider removal or plugin shutdown also exits demo mode; permission loss is detected within five ticks. Restart always starts private and blank. Existing photos/publicly delivered images are not erased.
+5. Run `/pov stop` to demonstrate **NO FEED** on the same public screen. Restart restores the same receiver/monitor identity without old pixels, then authorized demand can produce a fresh frame. Permission/access loss removes the owner's demand within five ticks; target invalidation, provider removal and shutdown discard applicable work. There is no mode change, and existing photographs or client screenshots are not erased.
 
-Caption this **“Solo self-view demo — periodic rendered snapshots.”** It demonstrates the same render-to-map path without friends. It does not demonstrate another player's POV or multi-user access protection. Do not call it live screen sharing: HUD, inventory, chat, shaders and audio are not captured. Use a landscape for the normal view and your own public monitor for deliberate feedback.
+Caption this **“Solo self-view demo — periodic rendered snapshots.”** It demonstrates the same render-to-map path without friends. It does not demonstrate another player's POV or multi-owner command controls. Do not call it live screen sharing: HUD, inventory, chat, shaders and audio are not captured. Use a landscape for the normal view and your own public monitor for deliberate feedback.
 
-For actual other-player footage, use a second legitimate Minecraft account/client that you control, or invite one tester. Keep server account authentication enabled. Target that account with `/pov ExactOtherName`, move it, then return to the authorized owner's receiver. Receivers are owner-private, so another account cannot simply film your monitor as a viewer. A solo clip does not replace the two-owner/copied-map privacy tests.
+For actual other-player footage, use a second legitimate Minecraft account/client that you control, or invite one tester. Keep server account authentication enabled. Target that account with `/pov ExactOtherName`, move it, then film the receiver or desk screen: any nearby viewer can see and photograph its shared pixels. A solo clip does not replace two-owner/shared-target, copied-map public-viewing and owner-only command/placement/removal checks. Only the authorized owner's viewing demand drives captures.
 
 The cadence is best-effort: a one-second scheduling interval is not guaranteed one-second latency. Slow renders skip intervals; delayed images show STALE. Maximum two active target feeds and one capture/render pipeline globally, with no recording history. Record at least one uncut sequence so the clip represents actual performance.
 
