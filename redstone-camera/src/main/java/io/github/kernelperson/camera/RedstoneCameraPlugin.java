@@ -30,6 +30,7 @@ public final class RedstoneCameraPlugin extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(this,this);
         getServer().getPluginManager().registerEvents(renders,this);
         for(World world:getServer().getWorlds()) for(Chunk chunk:world.getLoadedChunks()) load(chunk);
+        models.startLighting(this);
     }
     @Override public boolean onCommand(CommandSender sender,Command command,String label,String[] args) {
         if(!(sender instanceof Player player)) { sender.sendMessage("Run /rendercamera in game."); return true; }

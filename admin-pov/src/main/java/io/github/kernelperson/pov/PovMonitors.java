@@ -33,7 +33,7 @@ final class PovMonitors implements Listener,AutoCloseable {
     }
     ItemStack item(UUID owner) {
         ItemStack item=new ItemStack(Material.OAK_FENCE);var meta=item.getItemMeta();
-        meta.setDisplayName("Private POV Desk Monitor");meta.getPersistentDataContainer().set(itemTag,PersistentDataType.STRING,owner.toString());
+        meta.setDisplayName("POV Desk Monitor");meta.getPersistentDataContainer().set(itemTag,PersistentDataType.STRING,owner.toString());
         if(nativeModels)meta.setItemModel(NamespacedKey.fromString("village_trades:pov_monitor"));
         item.setItemMeta(meta);return item;
     }
