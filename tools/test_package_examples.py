@@ -58,6 +58,7 @@ class PackageTests(unittest.TestCase):
         (root/'docs'/'release-1.1.0-evidence.md').write_text('Evidence\n')
         (root/'docs'/'release-1.1.1-evidence.md').write_text('Flash verification\n')
         (root/'docs'/'release-1.2.0-evidence.md').write_text('Stable SDK and public-screen verification\n')
+        (root/'docs'/'development-1.3.0.md').write_text('Development recipe migration\n')
         (root/'docs'/'recording-guide.md').write_text('Solo POV and camera recording walkthrough\n')
         for folder,jar_name,package in [('postcards','RendererPostcards','postcards'),
                                         ('redstone-camera','RendererRedstoneCamera','camera'),
@@ -80,7 +81,7 @@ class PackageTests(unittest.TestCase):
                              hashlib.sha256(pack).hexdigest())
             files=module.collect_files(root)
             self.assertEqual({'README.md','LICENSE','docs/acceptance.md','docs/release-1.1.0-evidence.md',
-                              'docs/release-1.1.1-evidence.md','docs/release-1.2.0-evidence.md','docs/recording-guide.md',
+                              'docs/release-1.1.1-evidence.md','docs/release-1.2.0-evidence.md','docs/development-1.3.0.md','docs/recording-guide.md',
                               'RendererPostcards.jar','RendererRedstoneCamera.jar','RendererPaintersEasel.jar','RendererAdminPov.jar',
                               module.RESOURCE_PACK},set(files))
             self.assertEqual(pack,files[module.RESOURCE_PACK])
@@ -112,8 +113,8 @@ class PackageTests(unittest.TestCase):
                 self.assertEqual(outputs[0].read_bytes(),outputs[1].read_bytes())
                 with zipfile.ZipFile(outputs[0]) as archive:
                     manifest=json.loads(archive.read('manifest.json'))
-                    self.assertEqual('1.2.0',manifest['version'])
-                    self.assertEqual('v1.0.2',manifest['sdkVersion'])
+                    self.assertEqual('1.3.0-SNAPSHOT',manifest['version'])
+                    self.assertEqual('2.3.0-SNAPSHOT',manifest['sdkVersion'])
                     self.assertEqual(commit,manifest['sourceCommit'])
                     self.assertFalse(manifest['providerIncluded'])
                     self.assertFalse(manifest['testProbeIncluded'])

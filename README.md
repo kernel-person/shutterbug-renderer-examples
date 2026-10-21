@@ -4,7 +4,7 @@ By Kernel Person.
 
 Four independent plugins built **only** against the public Renderer API. Start with Postcards: its command handler is the shortest capture → render → Minecraft map example.
 
-**Examples 1.2.0** targets the stable public API **v1.0.2** and the matching Renderer **1.0.0** build with POV entity exclusions and framed-map capture. Older examples **1.1.1**, SDK **v1.0.1** and previous Renderer downloads are preserved; this is a new examples archive, not a replacement of old release bytes. See the [1.2.0 verification record](docs/release-1.2.0-evidence.md) for release gates and exact-artifact acceptance status.
+**Development examples 1.3.0-SNAPSHOT** use `ke.ric:renderer-api:2.3.0-SNAPSHOT` and require the matching development provider. This branch is unpublished; install the SDK locally before building. Published 1.2.0 and earlier artifacts and their evidence remain unchanged. See [development migration](docs/development-1.3.0.md).
 
 | Plugin | Try it | Demonstrates |
 | --- | --- | --- |
@@ -98,13 +98,13 @@ All POV maps use one non-contextual renderer: viewers receive the same completed
 
 Stopping clears the owner's selected feed; permission/access loss removes that owner's capture demand at the next one-tick check (normally 50 ms; longer if ticks lag). Periodic status/map-cache sends remain every five ticks; completed frames and explicit stop/invalidation are sent immediately. Target disappearance, teleport/world changes, provider removal and shutdown invalidate applicable frames or work, and obsolete completions cannot restore them. Other authorized owners may still demand a shared target. Restart restores receiver/monitor identity but no pixels: screens show **NO FEED** until a fresh authorized capture completes. None of these events changes the renderer into a private mode.
 
-Capture runs only while an authorized owner holds a receiver, or looks toward their loaded monitor within 16 blocks with line of sight. Same-target subscribers share a completed frame. Maximum: **two active targets and one capture/render pipeline globally**, served round-robin; there is no frame queue. Render settings are 128×128 CLASSIC, radius 16, two capture chunks per tick, one native worker, unchanged provider memory limits and a 30-second deadline. Cadence is **best-effort, not guaranteed frame rate or latency**: tick resolution/lag, shared work and slow renders can reduce each target's achieved rate. Slow work adds no full interval after completion, skips missed frames and never creates catch-up jobs. Failures back off from 2 to at most 30 seconds regardless of the requested rate. Images older than three seconds are labelled **STALE**; a receiver without a completed frame says **NO FEED** for everyone. Unloaded nearby chunks are rejected, never generated or loaded synchronously.
+Capture runs only while an authorized owner holds a receiver, or looks toward their loaded monitor within 16 blocks with line of sight. Same-target subscribers share a completed frame. Maximum: **two active targets**, each with one SDK-owned stream; the SDK shares provider capture/render capacity and never queues catch-up frames. Render settings are 128×128 CLASSIC, radius 16, two capture chunks per tick, one native worker, unchanged provider memory limits and a 30-second deadline. Cadence is **best-effort, not guaranteed frame rate or latency**: tick resolution/lag, shared work and slow renders can reduce each target's achieved rate. Slow work adds no full interval after completion, skips missed frames and never creates catch-up jobs. Failures back off from 2 to at most 30 seconds regardless of the requested rate. Images older than three seconds are labelled **STALE**; a receiver without a completed frame says **NO FEED** for everyone. Unloaded nearby chunks are rejected, never generated or loaded synchronously.
 
 Only ownership, map IDs and selected targets are stored in `bindings.yml`; monitor ownership lives in ItemFrame data. Completed frames and renderer canvases are transient; they are not saved as world-map base pixels or a recording history. Back up bindings with world map/entity data. Maximum 128 receiver owners and 128 active loaded monitors. Excess restored monitors stay protected with empty frames and do not request renders; unload other monitors, then reload their chunk to reactivate them. If several idle owners later demand more than two distinct targets, the first two targets in saved owner order are admitted; other receivers wait until demand frees a slot. See [AdminPovPlugin.java](admin-pov/src/main/java/io/github/kernelperson/pov/AdminPovPlugin.java), [FeedLoop.java](admin-pov/src/main/java/io/github/kernelperson/pov/FeedLoop.java) and [PovMap.java](admin-pov/src/main/java/io/github/kernelperson/pov/PovMap.java).
 
 ## Build and adapt
 
-Use the public SDK coordinate `com.github.kernel-person:shutterbug-renderer-api:v1.0.2` from JitPack and the matching Renderer provider at runtime. A standalone SDK JAR is never a server plugin. Do not rename or overwrite a cached v1.0.1 artifact to satisfy the new coordinate.
+Use the development SDK coordinate `ke.ric:renderer-api:2.3.0-SNAPSHOT`, installed locally from the matching development Renderer workspace, and the matching provider at runtime. A standalone SDK JAR is never a server plugin. Do not rename or overwrite a cached v1.0.1 artifact to satisfy the new coordinate.
 
 Install JDK21+ and Maven, then:
 
@@ -116,14 +116,14 @@ Output: each module's `target/Renderer*.jar`. No shading is needed: depend on th
 
 ```xml
 <dependency>
-  <groupId>com.github.kernel-person</groupId>
-  <artifactId>shutterbug-renderer-api</artifactId>
-  <version>v1.0.2</version>
+  <groupId>ke.ric</groupId>
+  <artifactId>renderer-api</artifactId>
+  <version>2.3.0-SNAPSHOT</version>
   <scope>provided</scope>
 </dependency>
 ```
 
-Use the JitPack repository `https://jitpack.io`. The frozen Spigot compile dependency is not a claim that the tested Paper26.2 server runs Minecraft1.21.10.
+The development SDK is resolved from the local Maven repository after installation. The frozen Spigot compile dependency is not a claim that the tested Paper26.2 server runs Minecraft1.21.10.
 
 The few small lifecycle/map helpers are deliberately copied into each plugin's own package: you can study, build or adapt one module without installing another. There is no shared runtime framework. Each plugin performs Bukkit mutations on the server thread, uses a 30-second overall deadline, cancels stale work and never queues unlimited captures.
 
@@ -141,4 +141,4 @@ Distribute your add-on, not the commercial Renderer provider, native binaries or
 
 Unit tests and builds are reproducible with `mvn clean verify`. Runtime acceptance and remaining manual visual checks are recorded in [docs/acceptance.md](docs/acceptance.md); do not mistake automated geometry/event checks for an actual human painting playtest.
 
-Release packaging: after committing reviewed source, run `python3 tools/package_examples.py --output target/ShutterBug-Renderer-Examples-1.2.0.zip`. It validates four JAR inventories and the reviewed resource-pack bytes, then records SDK version, source commit and artifact hashes. The ZIP contains four plugin JARs, the unchanged 1.1.0 pack, README, recording guide, license, current and historical acceptance/evidence notes, and manifest. No commercial provider, keys or test probe are included. Existing 1.0.0, 1.1.0 and 1.1.1 downloads are not replaced. Editable artwork and regeneration instructions are in [artwork/README.md](artwork/README.md).
+Release packaging: after committing reviewed source, run `python3 tools/package_examples.py --output target/ShutterBug-Renderer-Examples-1.3.0-SNAPSHOT.zip`. It validates four JAR inventories and the reviewed resource-pack bytes, then records SDK version, source commit and artifact hashes. The ZIP contains four plugin JARs, the unchanged 1.1.0 pack, README, recording guide, license, current and historical acceptance/evidence notes, and manifest. No commercial provider, keys or test probe are included. Existing 1.0.0, 1.1.0 and 1.1.1 downloads are not replaced. Editable artwork and regeneration instructions are in [artwork/README.md](artwork/README.md).

@@ -2,158 +2,86 @@ package io.github.kernelperson.easel;
 
 import ke.ric.renderer.api.*;
 import org.bukkit.*;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.*;
-import org.bukkit.scheduler.*;
 import org.junit.jupiter.api.*;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
-import java.util.logging.*;
+import java.util.function.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class RenderSessionTest {
-    Plugin plugin = mock(Plugin.class);
-    Server server = mock(Server.class);
-    BukkitScheduler scheduler = mock(BukkitScheduler.class);
-    RendererService service = mock(RendererService.class);
-    RendererClient client = mock(RendererClient.class);
-    RenderTask task = mock(RenderTask.class);
-    CompletableFuture<Scene> captured = new CompletableFuture<>();
-    CompletableFuture<RenderResult> rendered = new CompletableFuture<>();
-    Deque<Runnable> main = new ArrayDeque<>();
-    List<Runnable> deadlines = new ArrayList<>();
-    AtomicInteger deliveries = new AtomicInteger();
-    List<String> failures = new ArrayList<>();
-    List<String> diagnostics = new ArrayList<>();
-    Logger logger = Logger.getAnonymousLogger();
+    final Plugin plugin=mock(Plugin.class);
+    final Server server=mock(Server.class);
+    final Renderer renderer=mock(Renderer.class);
+    final SnapshotBuilder snapshot=mock(SnapshotBuilder.class,RETURNS_SELF);
+    final RendererService service=mock(RendererService.class);
+    final CompletableFuture<RenderedFrame> operation=new CompletableFuture<>();
+    final Location camera=new Location(mock(World.class),1,64,2);
+    Consumer<RenderedFrame> success;Consumer<Throwable> failure;
+    final AtomicInteger deliveries=new AtomicInteger();
+    final List<String> failures=new ArrayList<>();
     RenderSession session;
-    Location location = new Location(mock(World.class), 1, 64, 2);
-
     @BeforeEach void setup() {
-        logger.setUseParentHandlers(false);
-        logger.addHandler(new Handler() {
-            @Override public void publish(LogRecord record) { diagnostics.add(record.getMessage()); }
-            @Override public void flush() {}
-            @Override public void close() {}
-        });
-        when(plugin.getLogger()).thenReturn(logger);
         when(plugin.getServer()).thenReturn(server);
-        when(plugin.isEnabled()).thenReturn(true);
-        when(server.getScheduler()).thenReturn(scheduler);
-        ServicesManager services = mock(ServicesManager.class);
-        when(server.getServicesManager()).thenReturn(services);
+        when(plugin.getLogger()).thenReturn(mock(java.util.logging.Logger.class));
+        var services=mock(ServicesManager.class);when(server.getServicesManager()).thenReturn(services);
         when(services.load(RendererService.class)).thenReturn(service);
-        when(service.createClient(plugin)).thenReturn(client);
-        when(client.active()).thenReturn(true);
-        when(client.capture(any())).thenReturn(captured);
-        when(client.submit(any())).thenReturn(task);
-        when(task.completion()).thenReturn(rendered);
-        when(scheduler.runTask(eq(plugin), any(Runnable.class))).thenAnswer(i -> {
-            main.add(i.getArgument(1)); return mock(BukkitTask.class);
-        });
-        when(scheduler.runTaskLater(eq(plugin), any(Runnable.class), anyLong())).thenAnswer(i -> {
-            deadlines.add(i.getArgument(1)); return mock(BukkitTask.class);
-        });
-        session = new RenderSession(plugin);
+        when(renderer.snapshot(camera)).thenReturn(snapshot);
+        when(snapshot.capture(any(),any())).thenAnswer(i->{success=i.getArgument(0);failure=i.getArgument(1);return operation;});
+        session=new RenderSession(plugin,renderer);
     }
-    void drain() { while (!main.isEmpty()) main.remove().run(); }
-    boolean start(BooleanSupplierFixture alive) {
-        return session.request("one", location, alive::get, result -> deliveries.incrementAndGet(), failures::add);
-    }
-    interface BooleanSupplierFixture { boolean get(); }
+    boolean start(BooleanSupplier valid){return session.request("one",camera,valid,value->deliveries.incrementAndGet(),failures::add);}
+    RenderedFrame result(){return mock(RenderedFrame.class);}
+    @Test void retainsCaptureBudgetAndLetsSdkOwnConversionAndDeadline() {
+        assertTrue(start(()->true));
+        verify(snapshot).settings(argThat(s->s.profile()==RenderSettings.Profile.NORMAL && s.width()==128 && s.height()==128
+                && s.workers()==2 && s.timeout().equals(java.time.Duration.ofSeconds(30))));
+        verify(snapshot).radius(32);verify(snapshot).chunksPerTick(4);
 
-    @Test void captureSubmitAndDeliveryCrossTheMainThreadBoundary() {
-        assertTrue(start(() -> true));
-        captured.complete(mock(Scene.class));
-        verify(client, never()).submit(any());
-        drain();
-        verify(client).submit(argThat(job -> job.settings().width() == 128 && job.settings().height() == 128));
-        rendered.complete(mock(RenderResult.class));
-        assertEquals(0, deliveries.get());
-        drain();
-        assertEquals(1, deliveries.get());
-        assertTrue(failures.isEmpty());
+        success.accept(result());assertEquals(1,deliveries.get());assertTrue(failures.isEmpty());
     }
-    @Test void closeDuringCapturePreventsLateSubmissionAndDelivery() {
-        assertTrue(start(() -> true));
-        session.close();
-        captured.complete(mock(Scene.class)); drain();
-        verify(client, never()).submit(any());
-        verify(client).close();
-        assertEquals(0, deliveries.get());
+    @Test void duplicatePendingRequestAndCooldownDoNotAllocateAnotherPhoto() {
+        assertTrue(start(()->true));assertFalse(start(()->true));
+        success.accept(result());assertFalse(start(()->true));verify(snapshot,times(1)).capture(any(),any());
     }
-    @Test void closeAfterSubmissionRejectsAlreadyQueuedCompletion() {
-        assertTrue(start(() -> true));
-        captured.complete(mock(Scene.class)); drain();
-        rendered.complete(mock(RenderResult.class));
-        session.close(); drain();
-        verify(task).cancel();verify(client).close();
-        assertEquals(0,deliveries.get());
+    @Test void cancelledIdentityRejectsLateMapAndCancelsSdkFuture() {
+        assertTrue(start(()->true));session.invalidate("one");assertTrue(operation.isCancelled());
+        success.accept(result());assertEquals(0,deliveries.get());assertEquals(1,failures.size());
     }
-    @Test void serviceRemovalRejectsQueuedCompletionAndClosesClient() {
-        assertTrue(start(() -> true));
-        captured.complete(mock(Scene.class)); drain();
-        rendered.complete(mock(RenderResult.class));
-        var provider=new RegisteredServiceProvider<>(RendererService.class,service,ServicePriority.Normal,plugin);
-        session.providerRemoved(new org.bukkit.event.server.ServiceUnregisterEvent(provider));
-        drain();verify(task).cancel();verify(client).close();
-        assertEquals(0,deliveries.get());assertEquals(1,failures.size());
+    @Test void destinationDisappearanceNeverDeliversSavedResult() {
+        var valid=new AtomicBoolean(true);assertTrue(start(valid::get));valid.set(false);
+        success.accept(result());assertEquals(0,deliveries.get());assertTrue(operation.isCancelled());
     }
-    @Test void invalidDestinationPreventsDeliveryAndCancelsWork() {
-        var valid = new AtomicBoolean(true);
-        assertTrue(start(valid::get));
-        captured.complete(mock(Scene.class)); drain();
-        valid.set(false);
-        rendered.complete(mock(RenderResult.class)); drain();
-        assertEquals(0, deliveries.get());
+    @Test void providerRemovalRejectsAlreadyQueuedCallbacks() {
+        assertTrue(start(()->true));
+        var registration=new RegisteredServiceProvider<>(RendererService.class,service,ServicePriority.Normal,plugin);
+        session.providerRemoved(new org.bukkit.event.server.ServiceUnregisterEvent(registration));
+        success.accept(result());assertEquals(0,deliveries.get());assertTrue(operation.isCancelled());
     }
-    @Test void deadlineAlsoCoversNeverFinishingCapture() {
-        assertTrue(start(() -> true));
-        assertEquals(1, deadlines.size());
-        deadlines.getFirst().run();
-        captured.complete(mock(Scene.class)); drain();
-        verify(client, never()).submit(any());
-        assertEquals(1, failures.size());
-        assertTrue(failures.getFirst().contains("timed out"));
+    @Test void closeCancelsPendingWorkAndPreventsDelivery() {
+        assertTrue(start(()->true));session.close();success.accept(result());
+        assertTrue(operation.isCancelled());assertEquals(0,deliveries.get());verify(renderer).close();assertFalse(start(()->true));
     }
-    @Test void missingProviderReturnsAUsefulFailureWithoutStartingWork() {
+    @Test void missingProviderFailsBeforeStartingSdkWork() {
         when(server.getServicesManager().load(RendererService.class)).thenReturn(null);
-        assertFalse(start(() -> true));
-        assertEquals(1, failures.size());
-        verify(client, never()).capture(any());
+        assertFalse(start(()->true));assertEquals(1,failures.size());verifyNoInteractions(renderer);
     }
-    @Test void cancelledIdentityCannotDeliverAfterReplacement() {
-        assertTrue(start(() -> true));
-        session.invalidate("one");
-        captured.complete(mock(Scene.class)); drain();
-        verify(client, never()).submit(any());
-        assertEquals(0, deliveries.get());
+    @Test void failureReleasesPendingSlotWithoutPublishingAnything() {
+        assertTrue(start(()->true));failure.accept(new RendererException(RenderFailureCode.TIMEOUT,"timeout"));
+        assertEquals(0,deliveries.get());assertEquals(1,failures.size());assertTrue(operation.isCancelled());
     }
-    @Test void submitMemoryLimitLogsSafeAdmissionReason() {
-        when(client.submit(any())).thenThrow(new RendererException(RenderFailureCode.MEMORY_LIMIT,
-                "request live memory exceeds effective limit"));
-        assertTrue(start(() -> true));
-        captured.complete(mock(Scene.class)); drain();
-        assertEquals(List.of("This view exceeds the renderer memory limit. Try a less crowded area or ask an administrator."), failures);
-        assertEquals(List.of("Renderer failure phase=submit code=MEMORY_LIMIT reason=per-request-admission"), diagnostics);
+    @Test void memoryAdmissionKeepsActionableAdviceAndSafeDiagnostic() {
+        assertTrue(start(()->true));failure.accept(new RendererException(RenderFailureCode.MEMORY_LIMIT,"request live memory exceeds effective limit"));
+        assertEquals(List.of("This view exceeds the renderer memory limit. Try a less crowded area or ask an administrator."),failures);
+        verify(plugin.getLogger()).warning("Renderer failure phase=snapshot code=MEMORY_LIMIT reason=per-request-admission");
     }
-    @Test void aggregateMemoryLimitAdvisesOneShortRetryWithoutExposingProviderDetails() {
-        when(client.submit(any())).thenThrow(new RendererException(RenderFailureCode.MEMORY_LIMIT,
-                "aggregate provider residency exceeds limit"));
-        assertTrue(start(() -> true));
-        captured.complete(mock(Scene.class)); drain();
-        assertEquals(List.of("Renderer capacity is busy. Try again shortly."), failures);
-        assertEquals(List.of("Renderer failure phase=submit code=MEMORY_LIMIT reason=aggregate-admission"), diagnostics);
-    }
-    @Test void wrappedRenderMemoryLimitKeepsCodeAndNeverLogsCauseText() {
-        assertTrue(start(() -> true));
-        captured.complete(mock(Scene.class)); drain();
-        rendered.completeExceptionally(new CompletionException(new RendererException(
-                RenderFailureCode.MEMORY_LIMIT, "compact native renderer failed",
-                new IllegalStateException("private context must not be logged"))));
-        drain();
-        assertEquals(List.of("Renderer memory limit reached. Try again later or ask an administrator."), failures);
-        assertEquals(List.of("Renderer failure phase=render code=MEMORY_LIMIT reason=native-compact"), diagnostics);
+    @Test void aggregateMemoryAdviceDoesNotRevealPrivateCause() {
+        assertTrue(start(()->true));failure.accept(new CompletionException(new RendererException(RenderFailureCode.MEMORY_LIMIT,
+                "aggregate provider residency exceeds limit",new IllegalStateException("private context"))));
+        assertEquals(List.of("Renderer capacity is busy. Try again shortly."),failures);
+        verify(plugin.getLogger()).warning("Renderer failure phase=snapshot code=MEMORY_LIMIT reason=aggregate-admission");
     }
 }

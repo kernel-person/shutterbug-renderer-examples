@@ -2,7 +2,8 @@ package io.github.kernelperson.pov;
 
 import java.io.IOException;
 import java.util.*;
-import ke.ric.renderer.api.RendererService;
+import ke.ric.renderer.api.*;
+import java.time.Duration;
 import org.bukkit.*;
 import org.bukkit.command.*;
 import org.bukkit.entity.Player;
@@ -20,17 +21,19 @@ public final class AdminPovPlugin extends JavaPlugin implements Listener {
     private final Map<UUID,MapView> views=new HashMap<>();
     private final FeedLoop<UUID> loop=new FeedLoop<>();
     private BindingStore store;
-    private PovCapture capture;
+    private Renderer renderer;
+    private final Map<UUID,TargetFeed> feeds=new HashMap<>();
+    private static final RenderSettings SETTINGS=new RenderSettings(1,RenderSettings.Profile.CLASSIC,
+            128,128,Set.of(),RenderSettings.DEFAULT_MEMORY_LIMIT,1,Duration.ofSeconds(30));
+    private static final class TargetFeed {
+        final UUID world;RenderStream stream;
+        TargetFeed(UUID world){this.world=world;}
+    }
     private PovMonitors monitors;
-    private FeedLoop.Ticket<UUID> active;
     private boolean closed;
     static long now(){return System.nanoTime()/1_000_000;}
     @Override public void onEnable() {
-        if(!PovCapture.supportsTargetExclusions()) {
-            getLogger().severe("RendererAdminPov requires a matching ShutterBugRenderer provider with UUID capture exclusions (API v1.0.2 or newer). Update the provider before enabling POV.");
-            getServer().getPluginManager().disablePlugin(this);return;
-        }
-        saveDefaultConfig();store=new BindingStore(getDataFolder().toPath().resolve("bindings.yml"));capture=new PovCapture(this);
+        saveDefaultConfig();store=new BindingStore(getDataFolder().toPath().resolve("bindings.yml"));renderer=Renderer.forPlugin(this);
         try {
             for(var binding:store.load()) {
                 bindings.put(binding.owner(),binding);
@@ -80,12 +83,12 @@ public final class AdminPovPlugin extends JavaPlugin implements Listener {
         MapView view=old==null?Bukkit.createMap(player.getWorld()):views.get(owner);
         if(view==null){player.sendMessage("Saved receiver map is unavailable; ask an operator to restore map data.");return true;}
         if(!change(new BindingStore.Binding(owner,view.getId(),target.getUniqueId()),player))return true;
-        if(rate!=null)loop.updatesPerSecond(rate);
+        if(rate!=null && rate!=loop.updatesPerSecond()){loop.updatesPerSecond(rate);stopFeeds();}
         if(old==null)attach(owner,view);
         if(!hasReceiver(player,view.getId()))player.getInventory().addItem(receiver(owner));
         tick();refreshOwners();
         player.sendMessage("PUBLIC POV selected: "+target.getName()+". Anyone can see and photograph your receiver/monitor, including copies. Hold the map or watch your monitor. Periodic world snapshots; no HUD, chat or audio.");
-        player.sendMessage("POV target: "+loop.updatesPerSecond()+" updates/second per target, shared by all POV feeds until restart. Best-effort; one pipeline, no frame queue.");return true;
+        player.sendMessage("POV target: "+loop.updatesPerSecond()+" updates/second per target, shared by all POV feeds until restart. Best-effort; fresh world captures, no frame queue.");return true;
     }
     private boolean change(BindingStore.Binding replacement,Player player) {
         var old=bindings.put(replacement.owner(),replacement);
@@ -136,27 +139,54 @@ public final class AdminPovPlugin extends JavaPlugin implements Listener {
             if(owner!=null&&authorized(owner)&&watching(owner))demand.add(binding.target());
         }
         loop.demand(demand);
-        if(active!=null&&!loop.current(active)){capture.cancel();active=null;}
-        if(active==null) {
-            var next=loop.begin(now());
-            if(next!=null) {
-                Player target=getServer().getPlayer(next.target());
-                if(target==null||!target.isOnline()){loop.failed(next,now());}
-                else {
-                    active=next;UUID world=target.getWorld().getUID();
-                    capture.start(target.getEyeLocation(),target.getUniqueId(),()->loop.current(next)&&demanded(next.target())
-                            &&target.isOnline()&&world.equals(target.getWorld().getUID()),pixels->{
-                        if(loop.complete(next,now(),pixels)){active=null;refreshOwners();}
-                    },()->{loop.failed(next,now());if(Objects.equals(active,next))active=null;});
-                }
+        for(UUID key:List.copyOf(feeds.keySet()))if(!loop.targets().contains(key))stopFeed(key);
+        for(UUID key:loop.targets()) {
+            Player target=getServer().getPlayer(key);
+            TargetFeed existing=feeds.get(key);
+            if(existing!=null && (target==null || !target.isOnline() || !existing.world.equals(target.getWorld().getUID()))) {
+                stopFeed(key);loop.invalidate(key);existing=null;
             }
+            if(existing!=null && existing.stream!=null && !existing.stream.active()){retry(key,existing);continue;}
+            if(existing!=null || !loop.ready(key,now()))continue;
+            if(target==null || !target.isOnline()){loop.failed(key,now());continue;}
+            TargetFeed feed=new TargetFeed(target.getWorld().getUID());feeds.put(key,feed);
+            try {
+                feed.stream=renderer.stream(()-> {
+                    if(!current(key,feed,target) || !loaded(target.getEyeLocation()))return null;
+                    return target.getEyeLocation();
+                }).fresh().fps(loop.updatesPerSecond()).settings(SETTINGS).radius(16).chunksPerTick(2)
+                  .excluding(key).mapOptions(MapOutputOptions.defaults().dither(MapDither.NONE))
+                  .toMapSink(frame -> {
+                      if(current(key,feed,target) && loop.complete(key,frame.worldCapturedNanos()/1_000_000,frame.palette()))refreshOwners();
+                  }).onError(error -> retry(key,feed)).start();
+                if(feeds.get(key)!=feed && feed.stream!=null)feed.stream.close();
+            }catch(RuntimeException unavailable){retry(key,feed);}
         }
     }
+    private boolean current(UUID key,TargetFeed feed,Player target) {
+        return !closed && feeds.get(key)==feed && demanded(key) && target.isOnline()
+                && feed.world.equals(target.getWorld().getUID());
+    }
+    static boolean loaded(Location eye) {
+        if(eye.getWorld()==null)return false;
+        for(int x=(eye.getBlockX()-16)>>4;x<=((eye.getBlockX()+16)>>4);x++)
+            for(int z=(eye.getBlockZ()-16)>>4;z<=((eye.getBlockZ()+16)>>4);z++)
+                if(!eye.getWorld().isChunkLoaded(x,z))return false;
+        return true;
+    }
+    private void retry(UUID key,TargetFeed feed) {
+        if(feeds.get(key)!=feed)return;
+        stopFeed(key);loop.failed(key,now());
+    }
+    private void stopFeed(UUID key) {
+        TargetFeed old=feeds.remove(key);if(old!=null && old.stream!=null)old.stream.close();
+    }
+    private void stopFeeds(){for(UUID key:List.copyOf(feeds.keySet()))stopFeed(key);}
     private void refreshOwners() {
         for(var entry:views.entrySet()){Player owner=getServer().getPlayer(entry.getKey());if(owner!=null&&owner.isOnline())owner.sendMap(entry.getValue());}
     }
     private void invalidate(UUID target) {
-        loop.invalidate(target);if(active!=null&&!loop.current(active)){capture.cancel();active=null;}refreshOwners();
+        stopFeed(target);loop.invalidate(target);refreshOwners();
     }
     @EventHandler(priority=EventPriority.MONITOR,ignoreCancelled=true)
     public void teleport(PlayerTeleportEvent event){invalidate(event.getPlayer().getUniqueId());}
@@ -164,10 +194,10 @@ public final class AdminPovPlugin extends JavaPlugin implements Listener {
     @EventHandler public void logout(PlayerQuitEvent event){invalidate(event.getPlayer().getUniqueId());}
     @EventHandler public void providerRemoved(ServiceUnregisterEvent event) {
         if(event.getProvider().getService()!=RendererService.class)return;
-        loop.clear();active=null;capture.cancel();refreshOwners();
+        stopFeeds();loop.clear();refreshOwners();
     }
     @Override public void onDisable() {
-        closed=true;loop.clear();active=null;if(capture!=null)capture.close();
+        closed=true;stopFeeds();loop.clear();if(renderer!=null)renderer.close();
         refreshOwners();if(monitors!=null)monitors.close();
     }
 }

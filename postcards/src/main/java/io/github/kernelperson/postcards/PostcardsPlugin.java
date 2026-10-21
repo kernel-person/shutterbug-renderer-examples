@@ -1,6 +1,4 @@
 package io.github.kernelperson.postcards;
-import ke.ric.renderer.api.MapDither;
-import ke.ric.renderer.api.MinecraftMapConverter;
 import org.bukkit.command.*;
 import org.bukkit.entity.Player;
 import org.bukkit.event.*;
@@ -25,11 +23,9 @@ public final class PostcardsPlugin extends JavaPlugin implements Listener {
         if (player.getInventory().firstEmpty()<0) { player.sendMessage("Make space for a map first."); return true; }
         boolean started=renders.request(player.getUniqueId().toString(),player.getEyeLocation(),
             () -> player.isOnline() && player.getInventory().firstEmpty()>=0,
-            frame -> {
-                try {
-                    ItemStack item=maps.create(player.getWorld(),MinecraftMapConverter.quantize(frame,MapDither.BAYER),"Postcard");
-                    if (give(player,item)) player.sendMessage("Your postcard is ready!");
-                } catch(IOException failure) { player.sendMessage("Could not save the postcard; check server storage."); }
+            item -> {
+                var meta=item.getItemMeta();meta.setDisplayName("Postcard");item.setItemMeta(meta);
+                if (give(player,item)) player.sendMessage("Your postcard is ready!");
             }, message -> { if(player.isOnline()) player.sendMessage(message); });
         if(started) player.sendMessage("Taking your postcard...");
         return true;

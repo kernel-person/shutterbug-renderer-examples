@@ -122,15 +122,13 @@ public final class RedstoneCameraPlugin extends JavaPlugin implements Listener {
         if(dispenser.getInventory().firstEmpty()<0) { feedback(camera,false);return; }
         CameraPose pose=CameraPose.read(dispenser);
         Location lens=CameraPose.lens(camera.block().getLocation(),pose.yaw(),pose.pitch());
-        boolean accepted=renders.request(camera.id(),lens,camera::valid,frame->{
+        boolean accepted=renders.request(camera.id(),lens,camera::valid,map->{
             if(!camera.valid()) return;
             Dispenser current=(Dispenser)camera.block().getState();
             int slot=current.getInventory().firstEmpty();
             if(slot<0) { feedback(camera,false);return; }
-            try {
-                ItemStack map=maps.create(camera.block().getWorld(),MinecraftMapConverter.quantize(frame,MapDither.BAYER),"Camera Photo");
-                current.getInventory().setItem(slot,map);feedback(camera,true);
-            } catch(IOException failure) { getLogger().warning("Camera photo could not be saved.");feedback(camera,false); }
+            var meta=map.getItemMeta();meta.setDisplayName("Camera Photo");map.setItemMeta(meta);
+            current.getInventory().setItem(slot,map);feedback(camera,true);
         },message->feedback(camera,false));
         // A one-shot client effect, outside the optics. No entities, light blocks,
         // delayed cleanup or resource-pack changes; acceptance is not completion.

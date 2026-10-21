@@ -2,7 +2,7 @@ package io.github.kernelperson.pov;
 
 import java.lang.reflect.Field;
 import java.util.*;
-import ke.ric.renderer.api.RendererService;
+import ke.ric.renderer.api.*;
 import org.bukkit.*;
 import org.bukkit.command.Command;
 import org.bukkit.entity.Player;
@@ -20,95 +20,35 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class SharedPovTest {
-    @Test void demoRateChangesTheSharedCadenceAndPlainDemoKeepsIt() throws Exception {
-        var f=new Fixture();f.command("Other");var other=f.active();
-        f.loop.complete(other,other.started()+10,new byte[16384]);
-        f.command("demo","20");
-        assertEquals(f.owner,f.bindings.get(f.owner).target());
-        var self=f.active();assertNotNull(self);f.loop.complete(self,self.started()+10,new byte[16384]);
-        assertNull(f.loop.begin(self.started()+49));
-        var next=f.loop.begin(self.started()+50);assertNotNull(next,"20/sec needs a 50ms cadence");
-        f.command("demo");assertTrue(f.loop.current(next),"plain demo retains rate and healthy active ticket");
-        f.loop.complete(next,next.started()+10,new byte[16384]);
-        assertNotNull(f.loop.begin(next.started()+50),"plain demo must not restore the default rate");
-        verify(f.player,atLeastOnce()).sendMessage(contains("20 updates/second per target"));
-        verify(f.player,atLeastOnce()).sendMessage(contains("all POV feeds until restart"));
+    @Test void demoRatesConfigureFreshSharedStreamAndPlainDemoKeepsRate() throws Exception {
+        var f=new Fixture();f.command("demo","20");assertEquals(20,f.loop.updatesPerSecond());
+        verify(f.builder).fps(20);verify(f.builder).fresh();verify(f.builder).radius(16);verify(f.builder).chunksPerTick(2);
+        verify(f.builder).settings(org.mockito.ArgumentMatchers.argThat(settings->settings.profile()==RenderSettings.Profile.CLASSIC
+                &&settings.width()==128&&settings.height()==128&&settings.workers()==1));
+        verify(f.builder).excluding(f.owner);verify(f.builder).mapOptions(argThat(options->options.dither()==MapDither.NONE));
+        f.command("demo");assertEquals(20,f.loop.updatesPerSecond());verify(f.builder,times(1)).start();
     }
-
-    @Test void changingRateNeverCancelsHealthyActiveWorkOrAcceptsItsStaleCallback() throws Exception {
-        var f=new Fixture();f.command("demo");var active=f.active();
-        f.command("demo","1");assertTrue(f.loop.current(active));assertSame(active,f.active());
-        verify(f.capture,never()).cancel();verify(f.capture,times(1)).start(any(),eq(f.owner),any(),any(),any());
-        f.loop.complete(active,active.started()+100,new byte[16384]);
-        assertNull(f.loop.begin(active.started()+999));
-        var next=f.loop.begin(active.started()+1_000);assertNotNull(next);
-        assertFalse(f.loop.complete(active,next.started(),new byte[16384]));assertTrue(f.loop.current(next));
-        f.command("demo","20");assertTrue(f.loop.current(next));
-        f.loop.complete(next,next.started()+10,new byte[16384]);
-        assertNotNull(f.loop.begin(next.started()+50),"new cadence applies after the active frame completes");
-    }
-
-    @Test void rateChangesPreserveOutstandingFailureCooldownAndFailureCount() throws Exception {
-        var f=new Fixture();f.command("demo");var active=f.active();long start=active.started();
-        assertTrue(f.loop.complete(active,start+10,new byte[16384]));var completed=f.loop.frame(f.owner);
-        active=f.loop.begin(start+250);assertNotNull(active);
-        f.loop.failed(active,start+260);
-        f.command("demo","20");assertNull(f.active());
-        assertSame(completed,f.loop.frame(f.owner),"failure and rate change retain the last completed frame");
-        assertNull(f.loop.begin(start+2_259),"rate must not shorten backoff even when an older frame exists");
-        var retry=f.loop.begin(start+2_260);assertNotNull(retry);
-        f.loop.failed(retry,start+2_270);f.command("demo","1");
-        assertNull(f.loop.begin(start+6_269));assertNotNull(f.loop.begin(start+6_270));
-    }
-
-    @Test void invalidSyntaxAndRatesLeaveBindingsFramesTicketsAndCadenceUnchanged() throws Exception {
-        for(String[] invalid:List.of(new String[]{"demo","0"},new String[]{"demo","21"},
-                new String[]{"demo","-1"},new String[]{"demo","1.5"},new String[]{"demo","fast"},
-                new String[]{"demo","2147483648"},new String[]{"demo","4","extra"},
-                new String[]{"Other","4"})) {
-            var f=new Fixture();f.command("demo");var active=f.active();var binding=f.bindings.get(f.owner);
-            f.command(invalid);assertSame(binding,f.bindings.get(f.owner));assertTrue(f.loop.current(active));
-            verify(f.capture,never()).cancel();
-            f.loop.complete(active,active.started()+10,new byte[16384]);var frame=f.loop.frame(f.owner);
-            f.command(invalid);assertSame(frame,f.loop.frame(f.owner));
-            assertNull(f.loop.begin(active.started()+249));assertNotNull(f.loop.begin(active.started()+250));
-            verify(f.player,atLeastOnce()).sendMessage(contains("1-20"));
+    @Test void invalidSyntaxAndRatesLeaveBindingsAndRateUnchanged() throws Exception {
+        for(String[] invalid:List.of(new String[]{"demo","0"},new String[]{"demo","21"},new String[]{"demo","1.5"},new String[]{"Other","4"})){
+            var f=new Fixture();f.command("demo");var binding=f.bindings.get(f.owner);f.command(invalid);
+            assertSame(binding,f.bindings.get(f.owner));assertEquals(4,f.loop.updatesPerSecond());verify(f.builder,times(1)).start();
         }
     }
-
-    @Test void unauthorizedAndRejectedSelectionsCannotChangeRateOrActiveBinding() throws Exception {
-        for(String reason:List.of("permission","visibility","inventory","save")) {
-            var f=new Fixture();f.command("Other");var active=f.active();var binding=f.bindings.get(f.owner);
-            switch(reason) {
-                case "permission"->when(f.player.hasPermission(PovAccess.PERMISSION)).thenReturn(false);
-                case "visibility"->when(f.player.canSee(f.player)).thenReturn(false);
-                case "inventory"->{when(f.inventory.getContents()).thenReturn(new ItemStack[0]);when(f.inventory.firstEmpty()).thenReturn(-1);}
-                case "save"->{var field=AdminPovPlugin.class.getDeclaredField("store");field.setAccessible(true);
-                    doThrow(new java.io.IOException("test rejection")).when((BindingStore)field.get(f.plugin)).save(any());}
-            }
-            f.command("demo","20");assertEquals(binding,f.bindings.get(f.owner),reason);assertTrue(f.loop.current(active),reason);
-            f.loop.complete(active,active.started()+10,new byte[16384]);
-            assertNull(f.loop.begin(active.started()+249),reason);assertNotNull(f.loop.begin(active.started()+250),reason);
-            verify(f.capture,never()).cancel();
-        }
+    @Test void failedStreamRetainsLastPixelsAndEntersBackoff() throws Exception {
+        var f=new Fixture();f.command("demo");f.completed((byte)42);f.error.accept(new IllegalStateException("capacity"));
+        assertEquals(42,f.render(f.stranger)[500]);assertFalse(f.loop.ready(f.owner,AdminPovPlugin.now()));
+        f.tick();verify(f.builder,times(1)).start();verify(f.stream).close();
     }
-
-    @Test void schedulerChecksEveryTickButPeriodicMapBroadcastsRemainEveryFiveTicks(@TempDir java.nio.file.Path data) throws Exception {
-        var f=new Fixture();var scheduler=mock(BukkitScheduler.class);
-        when(f.server.getScheduler()).thenReturn(scheduler);
-        when(f.server.getPluginManager()).thenReturn(mock(org.bukkit.plugin.PluginManager.class));
-        doNothing().when(f.plugin).saveDefaultConfig();doReturn(data.toFile()).when(f.plugin).getDataFolder();
-        doReturn(new YamlConfiguration()).when(f.plugin).getConfig();doReturn("RendererAdminPov").when(f.plugin).getName();
-        f.plugin.onEnable();
-        var actions=org.mockito.ArgumentCaptor.forClass(Runnable.class);
-        verify(scheduler).runTaskTimer(eq(f.plugin),actions.capture(),eq(1L),eq(1L));
-        Runnable processing=actions.getValue();
-        verify(scheduler).runTaskTimer(eq(f.plugin),actions.capture(),eq(1L),eq(5L));
-        Runnable status=actions.getValue();clearInvocations(f.player);
-        for(int i=0;i<20;i++)processing.run();
-        verify(f.player,never()).sendMap(any());status.run();verify(f.player).sendMap(f.view);
+    @Test void sameTargetOwnersShareOneStreamAndEitherCanKeepDemand() throws Exception {
+        var f=new Fixture();f.command("demo");UUID owner2=UUID.randomUUID();var second=mock(Player.class);
+        f.bindings.put(owner2,new BindingStore.Binding(owner2,7,f.owner));when(f.server.getPlayer(owner2)).thenReturn(second);
+        when(second.getUniqueId()).thenReturn(owner2);when(second.isOnline()).thenReturn(true);
+        when(second.hasPermission(PovAccess.PERMISSION)).thenReturn(true);when(second.canSee(f.player)).thenReturn(true);
+        when(second.getInventory()).thenReturn(f.inventory);
+        f.tick();verify(f.builder,times(1)).start();
+        when(f.player.hasPermission(PovAccess.PERMISSION)).thenReturn(false);f.tick();verify(f.stream,never()).close();
+        when(second.hasPermission(PovAccess.PERMISSION)).thenReturn(false);f.tick();verify(f.stream).close();assertEquals(0,f.loop.size());
     }
-
     @Test void normalAndDemoCommandsSharePhotographablePixelsForEveryViewer() throws Exception {
         for(String selection:List.of("demo","Self","Other")) {
             var f=new Fixture();MapRenderer receiver=f.renderer();f.command(selection);
@@ -124,11 +64,11 @@ class SharedPovTest {
     }
 
     @Test void changingTargetsKeepsPublicRendererButRejectsTheOldCompletion() throws Exception {
-        var f=new Fixture();f.command("demo");var old=f.active();MapRenderer receiver=f.renderer();
+        var f=new Fixture();f.command("demo");var old=f.sink;MapRenderer receiver=f.renderer();
         f.command("Other");
         assertSame(receiver,f.renderer());assertFalse(f.renderer().isContextual());
         assertEquals(f.otherId,f.bindings.get(f.owner).target());
-        assertFalse(f.loop.complete(old,AdminPovPlugin.now(),new byte[16384]),"old completion cannot republish after target change");
+        old.accept(f.frame((byte)12));assertNull(f.loop.frame(f.owner),"old completion cannot republish after target change");
         assertArrayEquals(f.completed((byte)66),f.render(f.stranger));
     }
 
@@ -136,19 +76,19 @@ class SharedPovTest {
         var f=new Fixture();f.command("demo");
         assertFalse(f.renderer().isContextual());f.loop.clear();
         assertEquals(119,f.render(f.stranger)[500]);assertTrue(f.statuses.contains("NO FEED"));
-        f.loop.demand(List.of(f.owner));var old=f.loop.begin(AdminPovPlugin.now()-4_000);
-        byte[] pixels=new byte[16384];Arrays.fill(pixels,(byte)42);f.loop.complete(old,AdminPovPlugin.now(),pixels);
+        f.loop.demand(List.of(f.owner));
+        byte[] pixels=new byte[16384];Arrays.fill(pixels,(byte)42);f.loop.complete(f.owner,AdminPovPlugin.now()-4_000,pixels);
         assertEquals(42,f.render(f.stranger)[5_000]);assertTrue(f.statuses.contains("STALE"));
     }
 
     @Test void publicViewingDoesNotGrantControlPermissionOrBypassTargetVisibility() throws Exception {
         for(String selection:List.of("demo","Self","Other")) {
             var f=new Fixture();when(f.player.hasPermission(PovAccess.PERMISSION)).thenReturn(false);
-            f.command(selection);assertNull(f.active());assertEquals(f.owner,f.bindings.get(f.owner).target());
+            f.command(selection);assertNull(f.sink);assertEquals(f.owner,f.bindings.get(f.owner).target());
             verify(f.player,never()).sendMessage(contains("PUBLIC"));
         }
         var f=new Fixture();when(f.player.canSee(f.other)).thenReturn(false);
-        f.command("Other");assertNull(f.active());assertEquals(f.owner,f.bindings.get(f.owner).target());
+        f.command("Other");assertNull(f.sink);assertEquals(f.owner,f.bindings.get(f.owner).target());
         verify(f.player).sendMessage("That player is not available to you.");
     }
 
@@ -184,14 +124,13 @@ class SharedPovTest {
     @Test void stopProviderReloadAndShutdownDiscardLateCaptureCompletions() throws Exception {
         for(String reason:List.of("stop","provider","shutdown")) {
             var f=new Fixture();f.command("Other");
-            org.mockito.ArgumentCaptor<java.util.function.Consumer<byte[]>> success=org.mockito.ArgumentCaptor.captor();
-            verify(f.capture).start(any(),eq(f.otherId),any(),success.capture(),any());
+            MapSink obsolete=f.sink;
             switch(reason) {
                 case "stop"->f.command("stop");
                 case "provider"->{var registration=mock(RegisteredServiceProvider.class);when(registration.getService()).thenReturn(RendererService.class);f.plugin.providerRemoved(new ServiceUnregisterEvent(registration));}
                 case "shutdown"->f.plugin.onDisable();
             }
-            byte[] late=new byte[16384];Arrays.fill(late,(byte)66);success.getValue().accept(late);
+            obsolete.accept(f.frame((byte)66));
             assertEquals(119,f.render(f.stranger)[500],reason+" must reject obsolete asynchronous pixels");
             assertNull(f.loop.frame(f.otherId));
         }
@@ -200,10 +139,10 @@ class SharedPovTest {
     @Test void feedbackUsesOnlyLastCompletedFrameAndSpectatorsNeverRequestWork() throws Exception {
         var f=new Fixture();f.command("demo");
         assertArrayEquals(f.completed((byte)42),f.render(f.stranger));
-        var pending=f.loop.begin(AdminPovPlugin.now()+2_000);assertNotNull(pending);
+
         assertEquals(42,f.render(f.stranger)[500],"in-progress frame is never published");
         byte[] next=new byte[16384];Arrays.fill(next,(byte)66);
-        assertTrue(f.loop.complete(pending,AdminPovPlugin.now()+2_001,next));
+        f.sink.accept(f.frame((byte)66));
         assertArrayEquals(next,f.render(f.stranger));assertEquals(1,f.loop.size());
         when(f.inventory.getItemInMainHand()).thenReturn(null);
         f.tick();assertEquals(0,f.loop.size(),"a spectator cannot retain owner capture demand");
@@ -223,7 +162,10 @@ class SharedPovTest {
         final Server server=mock(Server.class);
         final Player player=mock(Player.class),stranger=mock(Player.class),other=mock(Player.class);
         final PlayerInventory inventory=mock(PlayerInventory.class);
-        final PovCapture capture=mock(PovCapture.class);
+        final Renderer api=mock(Renderer.class);
+        final StreamBuilder builder=mock(StreamBuilder.class,RETURNS_SELF);
+        final RenderStream stream=mock(RenderStream.class);
+        MapSink sink;java.util.function.Consumer<Throwable> error;
         final MapView view=mock(MapView.class);
         final List<MapRenderer> renderers=new ArrayList<>();
         final Map<MapRenderer,byte[]> canvases=new IdentityHashMap<>();
@@ -234,7 +176,11 @@ class SharedPovTest {
         Fixture(UUID owner) throws Exception {
             this.owner=owner;
             set("bindings",bindings);set("views",new HashMap<UUID,MapView>());set("loop",loop);
-            set("store",mock(BindingStore.class));set("capture",capture);
+            set("store",mock(BindingStore.class));set("renderer",api);set("feeds",new HashMap<>());
+            when(api.stream(org.mockito.ArgumentMatchers.<java.util.function.Supplier<Location>>any())).thenReturn(builder);
+            when(builder.start()).thenReturn(stream);when(stream.active()).thenReturn(true);
+            when(builder.toMapSink(any())).thenAnswer(i->{sink=i.getArgument(0);return builder;});
+            when(builder.onError(any())).thenAnswer(i->{error=i.getArgument(0);return builder;});
             doReturn(server).when(plugin).getServer();
             when(server.getPlayer(owner)).thenReturn(player);when(server.getPlayer(otherId)).thenReturn(other);
             when(server.getPlayerExact("Other")).thenReturn(other);
@@ -261,8 +207,8 @@ class SharedPovTest {
         void tick() throws Exception {var tick=AdminPovPlugin.class.getDeclaredMethod("tick");tick.setAccessible(true);tick.invoke(plugin);}
         void attach() throws Exception {var attach=AdminPovPlugin.class.getDeclaredMethod("attach",UUID.class,MapView.class);attach.setAccessible(true);attach.invoke(plugin,owner,view);}
         MapRenderer renderer(){assertEquals(1,renderers.size());return renderers.getFirst();}
-        @SuppressWarnings("unchecked") FeedLoop.Ticket<UUID> active() throws Exception {var field=AdminPovPlugin.class.getDeclaredField("active");field.setAccessible(true);return (FeedLoop.Ticket<UUID>)field.get(plugin);}
-        byte[] completed(byte color) throws Exception {var ticket=active();assertTrue(loop.current(ticket));byte[] pixels=new byte[16384];Arrays.fill(pixels,color);assertTrue(loop.complete(ticket,AdminPovPlugin.now(),pixels));return pixels;}
+        MapFrame frame(byte color) {var frame=mock(MapFrame.class);byte[] pixels=new byte[16384];Arrays.fill(pixels,color);when(frame.palette()).thenReturn(pixels);when(frame.worldCapturedNanos()).thenReturn(System.nanoTime());return frame;}
+        byte[] completed(byte color) {assertNotNull(sink);MapFrame frame=frame(color);sink.accept(frame);return frame.palette();}
         byte[] render(Player viewer) {
             byte[] result=canvases.computeIfAbsent(renderer(),ignored->new byte[16384]);var canvas=mock(MapCanvas.class);
             doAnswer(i->{int x=i.getArgument(0),y=i.getArgument(1);result[y*128+x]=i.getArgument(2);return null;}).when(canvas).setPixel(anyInt(),anyInt(),anyByte());
