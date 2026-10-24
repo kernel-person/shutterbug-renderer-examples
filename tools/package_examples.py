@@ -45,7 +45,7 @@ def verify_jar(data,package):
 def collect_files(root):
     files={name:(root/name).read_bytes() for name in ('README.md','LICENSE','docs/acceptance.md',
            'docs/release-1.1.0-evidence.md','docs/release-1.1.1-evidence.md',
-           'docs/release-1.2.0-evidence.md','docs/development-1.3.0.md','docs/recording-guide.md')}
+           'docs/release-1.2.0-evidence.md','docs/development-1.3.0.md','docs/release-1.3.0-evidence.md','docs/recording-guide.md')}
     for module,name,package in MODULES:
         data=(root/module/'target'/(name+'.jar')).read_bytes()
         verify_jar(data,package);files[name+'.jar']=data
@@ -72,8 +72,9 @@ def main():
     def git(*command): return subprocess.check_output(['git',*command],cwd=root,text=True).strip()
     if git('status','--porcelain'): raise SystemExit('Commit reviewed source before packaging')
     files=collect_files(root)
-    manifest={'version':'1.3.0-SNAPSHOT','sdkVersion':'2.3.0-SNAPSHOT','sourceCommit':git('rev-parse','HEAD'),
-              'source':'https://github.com/kernel-person/shutterbug-renderer-examples',
+    commit=git('rev-parse','HEAD')
+    manifest={'version':'1.3.0','sdkVersion':'2.3.0-preview.3','sourceCommit':commit,
+              'source':'https://github.com/kernel-person/shutterbug-renderer-examples/tree/'+commit,
               'providerIncluded':False,'testProbeIncluded':False,
               'sha256':{name:hashlib.sha256(data).hexdigest() for name,data in sorted(files.items())}}
     files['manifest.json']=(json.dumps(manifest,indent=2)+'\n').encode()

@@ -4,7 +4,7 @@ By Kernel Person.
 
 Four independent plugins built **only** against the public Renderer API. Start with Postcards: its command handler is the shortest capture → render → Minecraft map example.
 
-**Development examples 1.3.0-SNAPSHOT** use `ke.ric:renderer-api:2.3.0-SNAPSHOT` and require the matching development provider. This branch is unpublished; install the SDK locally before building. Published 1.2.0 and earlier artifacts and their evidence remain unchanged. See [development migration](docs/development-1.3.0.md).
+**Examples 1.3.0** use `ke.ric:renderer-api:2.3.0-preview.3` and require **Renderer 1.1.0**. Postcards and Camera use the fluent snapshot API; Easel captures a reference frame; POV uses SDK streams and map sinks. This release is prepared locally; publication and exact commercial runtime acceptance are pending. See [1.3.0 verification and acceptance](docs/release-1.3.0-evidence.md). Published 1.2.0 and earlier artifacts remain unchanged.
 
 | Plugin | Try it | Demonstrates |
 | --- | --- | --- |
@@ -20,7 +20,7 @@ Four independent plugins built **only** against the public Renderer API. Start w
 3. Copy any of the four example JARs from this repository's build output or the examples ZIP into `plugins/` and restart. Each is independent; no shared support plugin is required.
 4. Stand in an already loaded area. The original examples capture a 32-block radius; Admin POV uses 16. None generates or preloads distant chunks.
 
-Renderer platforms: **macOS ARM64 and Linux x86-64**. Windows is coming soon and is not supported by this release. Java 21 is the SDK/source compilation baseline, not the server runtime requirement.
+Renderer 1.1.0 targets **macOS ARM64, Linux x86-64 and Windows x86-64**. Exact commercial acceptance of the new provider and these examples remains pending on all three platforms. Java 21 is the SDK/source compilation baseline; the server requires Java 25.
 
 The renderer must register an active `RendererService`. If activation fails, commands report that the renderer is unavailable; they never handle license keys themselves. Disabling/reloading the provider cancels outstanding work. A server restart is the supported upgrade method.
 
@@ -86,11 +86,11 @@ Permission `rendererexamples.pov` defaults to **OP**. Only authorized operators 
 
 Recording alone? `/pov demo` is shorthand for `/pov YourExactPlayerName`: both select **you** using exactly the same public receiver and monitor behavior as any other target. There is no private/public mode switch. Hold the map or watch your desk monitor to drive updates. Each render samples only the previous completed frame, so feedback advances one completed snapshot at a time, without recursive rendering or extra pipelines. Label the clip as a **solo self-view demo**, not another player's view. See the [recording walkthrough](docs/recording-guide.md).
 
-The default target is **4 updates per second per active target** (250 ms start-to-start). `/pov demo [updates-per-second]` accepts a whole number from **1 to 20**: for example, `/pov demo 4` selects self and sets the shared cadence to four updates per second. The setting applies to **all POV feeds for this server run**, not just your receiver; restart restores 4. Plain `/pov demo` and `/pov <player>` keep the current rate. Invalid or rejected commands leave the rate and selection unchanged. A rate change does not cancel healthy work or reset failure cooldowns.
+The default target is **4 updates per second per active target** (250 ms start-to-start). `/pov demo [updates-per-second]` accepts a whole number from **1 to 20**: for example, `/pov demo 4` selects self and sets the shared cadence to four updates per second. The setting applies to **all POV feeds for this server run**, not just your receiver; restart restores 4. Plain `/pov demo` and `/pov <player>` keep the current rate. Invalid or rejected commands leave the rate and selection unchanged. A rate change restarts the affected SDK streams while preserving receiver identities and failure cooldowns.
 
 The target's server-side eye position and exact yaw/pitch are captured. This is **rendered world-view sampling, not screen sharing**: no HUD, chat, inventory UI, client shaders or audio. It does not record frames or store a history. Administrators can still take their own screenshots; this plugin cannot erase images a client has already received.
 
-POV excludes exactly the target player's UUID from capture, so looking down does not render the target's own body around the camera. Other players and entities remain visible. An older provider lacking this API option is rejected at startup with an update message; it does not silently fall back to self-obstructed capture.
+POV excludes exactly the target player's UUID from capture, so looking down does not render the target's own body around the camera. Other players and entities remain visible. Renderer 1.1.0 is required for the fluent snapshot and stream API; older providers are not supported by examples 1.3.0.
 
 The matching provider captures loaded framed maps from their current completed pixels, including these public POV screens. Camera photos and easel reference captures can therefore include a displayed map. This is a bounded snapshot of an existing frame, not recursive rendering or screen sharing; feedback uses the previous completed image.
 
@@ -104,7 +104,7 @@ Only ownership, map IDs and selected targets are stored in `bindings.yml`; monit
 
 ## Build and adapt
 
-Use the development SDK coordinate `ke.ric:renderer-api:2.3.0-SNAPSHOT`, installed locally from the matching development Renderer workspace, and the matching provider at runtime. A standalone SDK JAR is never a server plugin. Do not rename or overwrite a cached v1.0.1 artifact to satisfy the new coordinate.
+Use `ke.ric:renderer-api:2.3.0-preview.3` from `https://shutterbug-maven.pages.dev/` and Renderer 1.1.0 at runtime. A standalone SDK JAR is never a server plugin. The dependency is provided by the installed commercial provider; do not shade it into an example.
 
 Install JDK21+ and Maven, then:
 
@@ -118,12 +118,23 @@ Output: each module's `target/Renderer*.jar`. No shading is needed: depend on th
 <dependency>
   <groupId>ke.ric</groupId>
   <artifactId>renderer-api</artifactId>
-  <version>2.3.0-SNAPSHOT</version>
+  <version>2.3.0-preview.3</version>
   <scope>provided</scope>
 </dependency>
 ```
 
-The development SDK is resolved from the local Maven repository after installation. The frozen Spigot compile dependency is not a claim that the tested Paper26.2 server runs Minecraft1.21.10.
+Add the Maven repository when adapting an example outside this reactor:
+
+```xml
+<repositories>
+  <repository>
+    <id>shutterbug</id>
+    <url>https://shutterbug-maven.pages.dev/</url>
+  </repository>
+</repositories>
+```
+
+The frozen Spigot compile dependency is not a claim that the Paper 26.2 server runs Minecraft 1.21.10.
 
 The few small lifecycle/map helpers are deliberately copied into each plugin's own package: you can study, build or adapt one module without installing another. There is no shared runtime framework. Each plugin performs Bukkit mutations on the server thread, uses a 30-second overall deadline, cancels stale work and never queues unlimited captures.
 
@@ -139,6 +150,20 @@ Distribute your add-on, not the commercial Renderer provider, native binaries or
 
 ## Acceptance status
 
-Unit tests and builds are reproducible with `mvn clean verify`. Runtime acceptance and remaining manual visual checks are recorded in [docs/acceptance.md](docs/acceptance.md); do not mistake automated geometry/event checks for an actual human painting playtest.
+Unit tests and builds are reproducible with `mvn clean verify`. Current release verification and pending runtime checks are recorded in [1.3.0 evidence](docs/release-1.3.0-evidence.md), with historical checks in [docs/acceptance.md](docs/acceptance.md); do not mistake automated geometry/event checks for an actual human painting playtest.
 
-Release packaging: after committing reviewed source, run `python3 tools/package_examples.py --output target/ShutterBug-Renderer-Examples-1.3.0-SNAPSHOT.zip`. It validates four JAR inventories and the reviewed resource-pack bytes, then records SDK version, source commit and artifact hashes. The ZIP contains four plugin JARs, the unchanged 1.1.0 pack, README, recording guide, license, current and historical acceptance/evidence notes, and manifest. No commercial provider, keys or test probe are included. Existing 1.0.0, 1.1.0 and 1.1.1 downloads are not replaced. Editable artwork and regeneration instructions are in [artwork/README.md](artwork/README.md).
+Release delivery contains two archives from the same reviewed source commit:
+
+- `ShutterBug-Renderer-Examples-1.3.0.zip`: four plugin JARs, the byte-identical 1.1.0 resource pack, README, recording guide, license, current and historical evidence, and a manifest containing the SDK version, source commit and artifact hashes.
+- `ShutterBug-Renderer-Examples-1.3.0-source.zip`: the complete tracked source tree, including all four Maven modules, tests, editable artwork and build instructions. Extract it to study or build the simplified examples. The bundle manifest links directly to the same commit.
+
+After tests pass and reviewed source is committed, build both archives from that clean checkout:
+
+```sh
+mvn clean verify
+python3 tools/package_examples.py --output target/ShutterBug-Renderer-Examples-1.3.0.zip
+git archive --format=zip --prefix=ShutterBug-Renderer-Examples-1.3.0-source/ --output=target/ShutterBug-Renderer-Examples-1.3.0-source.zip HEAD
+(cd target && shasum -a 256 ShutterBug-Renderer-Examples-1.3.0-source.zip > ShutterBug-Renderer-Examples-1.3.0-source.zip.sha256)
+```
+
+The plugin packager rejects bundled API/provider/native/probe payloads and verifies the reviewed resource-pack bytes. Neither archive includes the commercial provider, native libraries or license keys. The source ZIP contains only tracked Git files, excluding generated targets. Existing downloads remain unchanged. Editable artwork and regeneration instructions are in [artwork/README.md](artwork/README.md).
