@@ -1,12 +1,12 @@
 # Recording the four examples
 
-Use examples **1.2.0**, stable SDK **v1.0.2** and the matching Renderer **1.0.0** build described in the [README](../README.md), with entity exclusions and framed-map capture. Older examples **1.1.1**, Renderer and SDK **v1.0.1** downloads remain unchanged. The resource pack remains **1.1.0**, byte for byte. These are shot instructions, not a claim that the latest build has passed client acceptance; see the [1.2.0 verification record](release-1.2.0-evidence.md).
+Use examples **1.3.0**, SDK **`ke.ric:renderer-api:2.3.0-preview.3`** and the matching Renderer **1.1.0** build described in the [README](../README.md). The examples use fluent snapshots and streams, with entity exclusions and framed-map capture. Earlier example, Renderer and SDK downloads remain unchanged. The resource pack remains **1.1.0**, byte for byte. These are shot instructions, not a claim that the latest build has passed client acceptance; see the [1.3.0 verification record](release-1.3.0-evidence.md).
 
 ## Prepare
 
-Use Java 25 / Paper 26.2 / Minecraft 26.2 and an already activated macOS ARM64 or Linux x86-64 Renderer. Stop the server before replacing example JARs, then restart; do not use `/reload`. Keep your existing world, plugin data and license. Back up the world and example data together. Do not film license configuration, account information or private console output.
+Use Java 25 / Paper 26.2 / Minecraft 26.2 and an already activated Renderer 1.1.0 on a supported platform. Stop the server before replacing example JARs, then restart; do not use `/reload`. Keep your existing world, plugin data and license. Back up the world and example data together. Do not film license configuration, account information or private console output.
 
-Install the four example JARs and accept `renderer-examples-resourcepack-1.1.0.zip`. Configure the model options in the [README](../README.md). Use a loaded, well-lit scene with no other rendering jobs running. Enable client particles for the flash shot. Windows remains coming soon.
+Install the four example JARs and accept `renderer-examples-resourcepack-1.1.0.zip`. Configure the model options in the [README](../README.md). Use a loaded, well-lit scene with no other rendering jobs running. Enable client particles for the flash shot. Windows provider/sample acceptance does not establish this examples/client recording workflow; the current examples probe covers macOS and emulated Linux, with POV startup only.
 
 ## Painter's Easel — about 20–30 seconds
 
@@ -39,7 +39,7 @@ Caption this **“Solo self-view demo — periodic rendered snapshots.”** It d
 
 For actual other-player footage, use a second legitimate Minecraft account/client that you control, or invite one tester. Keep server account authentication enabled. Target that account with `/pov ExactOtherName`, move it, then film the receiver or desk screen: any nearby viewer can see and photograph its shared pixels. A solo clip does not replace two-owner/shared-target, copied-map public-viewing and owner-only command/placement/removal checks. Only the authorized owner's viewing demand drives captures.
 
-The cadence is **best-effort, not a guaranteed frame rate or latency**. Tick resolution/lag, two targets sharing the pipeline and slow captures/renders can reduce the achieved rate. Slow renders add no full interval after completion and skip missed frames without a catch-up backlog; delayed images show STALE. Maximum two active target feeds, served round-robin, and one capture/render pipeline globally, with no recording history. Changing rate never cancels healthy work or bypasses the exponential 2-30 second failure cooldown. Completed frames are sent immediately; periodic status/map-cache sends remain every five ticks. Record at least one uncut sequence so the clip represents actual performance.
+The cadence is **best-effort, not a guaranteed frame rate or latency**. Tick resolution/lag, two targets sharing the pipeline and slow captures/renders can reduce the achieved rate. Slow renders add no full interval after completion and skip missed frames without a catch-up backlog; delayed images show STALE. Maximum two active targets, each with one SDK-owned stream sharing provider capacity, with no catch-up queue or recording history. Changing rate restarts the affected streams while preserving receiver identities and the exponential 2-30 second failure cooldown. Completed frames are sent immediately; periodic status/map-cache sends remain every five ticks. Record at least one uncut sequence so the clip represents actual performance.
 
 ## Postcards — optional short fourth clip
 

@@ -1,10 +1,12 @@
 # Acceptance checklist
 
-## Examples 1.3.0 — fluent SDK release preparation (2026-10-24)
+## Examples 1.3.0 — fluent SDK server acceptance (2026-10-24)
 
-Examples 1.3.0 uses SDK `ke.ric:renderer-api:2.3.0-preview.3` and requires Renderer 1.1.0. See [the current verification record](release-1.3.0-evidence.md). The new recipe migration uses SDK-owned snapshots and streams: up to two active target streams replace the old single global POV pipeline, and a cadence change restarts streams while preserving receiver identity and failure backoff. Historical test counts, throughput observations and artifact hashes below do not validate this release.
+Examples 1.3.0 uses SDK `ke.ric:renderer-api:2.3.0-preview.3` and requires Renderer 1.1.0. See [the current verification record](release-1.3.0-evidence.md). The recipe migration uses SDK-owned snapshots and streams: up to two active target streams replace the old single global POV pipeline, and a cadence change restarts streams while preserving receiver identity and failure backoff. Historical test counts, throughput observations and artifact hashes below do not validate this release.
 
-Exact commercial macOS ARM64, Linux x86-64 and Windows x86-64 acceptance is pending. Check new photograph persistence and unchanged legacy map IDs, six-way camera delivery, mutable easel persistence, public POV receivers/monitors and copied maps, stop/permission/target/provider invalidation, rate changes and cached restart with the final provider and example artifacts. Unit tests and source compilation do not establish client appearance or sustained timing.
+The exact four example JARs passed the bounded synthetic-player Paper probe on native macOS ARM64 and Docker Linux amd64 emulation on the Mac. It checked postcard/camera output, a north-facing camera across restart, easel reference capture and painting, restored pigment/map state, one-time collection and native easel removal. Camera inventory survived restart without another shot under sustained power. All four plugins loaded; **Admin POV startup was the only POV runtime check**. The licensed provider's cached restart and clean shutdown were checked alongside the examples. Windows passed the commercial provider/shipped-sample checks; the examples probe did not run there.
+
+Actual client appearance, six-direction camera playtesting, complete POV receiver/monitor and multi-owner workflows, permission/target/provider invalidation, cadence behavior and sustained timing remain untested on these release bytes. The server probe is not a network client or human playtest. Genuine personalized buyer activation remains a separate gate.
 
 ## Examples 1.2.0 — stable SDK and current demo contract (2026-10-17)
 

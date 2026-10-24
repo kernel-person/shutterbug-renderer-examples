@@ -4,7 +4,7 @@ By Kernel Person.
 
 Four independent plugins built **only** against the public Renderer API. Start with Postcards: its command handler is the shortest capture → render → Minecraft map example.
 
-**Examples 1.3.0** use `ke.ric:renderer-api:2.3.0-preview.3` and require **Renderer 1.1.0**. Postcards and Camera use the fluent snapshot API; Easel captures a reference frame; POV uses SDK streams and map sinks. This release is prepared locally; publication and exact commercial runtime acceptance are pending. See [1.3.0 verification and acceptance](docs/release-1.3.0-evidence.md). Published 1.2.0 and earlier artifacts remain unchanged.
+**Examples 1.3.0** use `ke.ric:renderer-api:2.3.0-preview.3` and require **Renderer 1.1.0**. Postcards and Camera use the fluent snapshot API; Easel captures a reference frame; POV uses SDK streams and map sinks. Automated acceptance used these exact four plugin JARs with Renderer 1.1.0 on macOS ARM64 and Linux x86-64. It covered postcard/camera output and easel capture, painting and restart persistence; Admin POV was checked for startup only. Client visuals and the full POV workflow remain untested for these release bytes. See [1.3.0 verification and acceptance](docs/release-1.3.0-evidence.md). Published 1.2.0 and earlier artifacts remain unchanged.
 
 | Plugin | Try it | Demonstrates |
 | --- | --- | --- |
@@ -20,7 +20,7 @@ Four independent plugins built **only** against the public Renderer API. Start w
 3. Copy any of the four example JARs from this repository's build output or the examples ZIP into `plugins/` and restart. Each is independent; no shared support plugin is required.
 4. Stand in an already loaded area. The original examples capture a 32-block radius; Admin POV uses 16. None generates or preloads distant chunks.
 
-Renderer 1.1.0 targets **macOS ARM64, Linux x86-64 and Windows x86-64**. Exact commercial acceptance of the new provider and these examples remains pending on all three platforms. Java 21 is the SDK/source compilation baseline; the server requires Java 25.
+Renderer 1.1.0 supports **macOS ARM64, Linux x86-64 and Windows x86-64**. The examples probe ran natively on macOS ARM64 and under Docker Linux amd64 emulation on the Mac; this is not a native Linux-host test. Windows acceptance covered the commercial provider and its shipped sample, not these examples. Java 21 is the SDK/source compilation baseline; the server requires Java 25.
 
 The renderer must register an active `RendererService`. If activation fails, commands report that the renderer is unavailable; they never handle license keys themselves. Disabling/reloading the provider cancels outstanding work. A server restart is the supported upgrade method.
 
@@ -150,7 +150,7 @@ Distribute your add-on, not the commercial Renderer provider, native binaries or
 
 ## Acceptance status
 
-Unit tests and builds are reproducible with `mvn clean verify`. Current release verification and pending runtime checks are recorded in [1.3.0 evidence](docs/release-1.3.0-evidence.md), with historical checks in [docs/acceptance.md](docs/acceptance.md); do not mistake automated geometry/event checks for an actual human painting playtest.
+Unit tests and builds are reproducible with `mvn clean verify`. Current release verification, the bounded server acceptance and remaining checks are recorded in [1.3.0 evidence](docs/release-1.3.0-evidence.md), with historical checks in [docs/acceptance.md](docs/acceptance.md); do not mistake automated geometry/event checks for an actual human painting playtest.
 
 Release delivery contains two archives from the same reviewed source commit:
 
